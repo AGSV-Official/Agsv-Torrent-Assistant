@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.0.5
+// @version      0.0.6
 // @description  Agsv审种助手
 // @author       Exception
 // @match        *://*.agsvpt.com/details.php*
@@ -428,8 +428,22 @@
         if (td.text().trim() == '海报') {
             poster = $('#kposter').children().attr('src');
         }
+        if (td.text().trim() == "IMDb信息") {
+            if (td.parent().last().find("a").text() == "这里"){
+                var fullUrl = new URL(href, window.location.origin).toString();
+                td.parent().find("a").attr("href",fullUrl);
+                let href = td.parent().last().find("a").attr("href").trim();
+                td.parent().last().find("a").click();
+            }
+        }
+        if (td.text() == "MediaInfo"){
+            //$(this).find("")
+            let md = td.parent().children().last();
+            console.log(md.children().children().first().innerHTML);
+            mediainfo_short = $('.mediainfo-short .codemain').text().replace(/\s+/g, '');
+            mediainfo = $('.mediainfo-raw .codemain').text().replace(/\s+/g, '');
+        }
     }
- 
     let imdbUrl = $('#kimdb a').attr("href")
     /* if (imdbText.indexOf('douban') >= 0) {
         douban = $(element).attr('title');
@@ -439,12 +453,7 @@
         imdb = $(element).attr('title');
     } */
     
-    /* if (td.text() = "MediaInfo"){
-        //$(this).find("")
-        mediainfo_short = $('.mediainfo-short .codemain').text().replace(/\s+/g, '');
-        mediainfo = $('.mediainfo-raw .codemain').text().replace(/\s+/g, '');
-    } */	
- 
+      
     var screenshot = '';
     var pngCount = 0;
     var imgCount = 0;
