@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.0.3
+// @version      0.0.5
 // @description  Agsv审种助手
 // @author       Exception
-// @match        *://*agsvpt.com/details.php*
+// @match        *://*.agsvpt.com/details.php*
 // @require      https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js
 // @grant        GM_xmlhttpRequest
 // @license      MIT
@@ -230,13 +230,6 @@
         title_is_complete = true;
     }
  
-    // 发布组选择
-    if (title_lowercase.indexOf('cmctv') >= 0) {
-        title_group = 9;
-    } else if (title_lowercase.indexOf('cmct') >= 0) {
-        title_group = 1;
-    }
- 
     var subtitle, cat, type, encode, audio, resolution, area, group, anonymous, is_complete,category;
     var poster;
     var fixtd, douban, imdb, mediainfo, mediainfo_short;
@@ -382,6 +375,8 @@
                 resolution = 4;
             } else if (text.indexOf('SD') >= 0) {
                 resolution = 5;
+            } else if (text.indexOf('4320p') >= 0) {
+                resolution = 6
             }
             console.log("resolution:"+resolution);
             // 地区
@@ -468,7 +463,7 @@
     });
  
     let error = false;
-    $('#outer').prepend('<div style="display: inline-block; padding: 10px 30px; color: white; background: red; font-weight: bold;" id="assistant-tooltips"></div>');
+    $('#top').prepend('<div style="display: inline-block; padding: 10px 30px; color: white; background: red; font-weight: bold;" id="assistant-tooltips"></div><br>');
     /* if (/\s+/.test(title)) {
         $('#assistant-tooltips').append('主标题包含空格<br/>');
         error = true;
@@ -541,10 +536,10 @@
         $('#assistant-tooltips').append('媒体信息未解析<br/>');
         error = true;
     } */
-    if (title_is_complete && !is_complete) {
+    /* if (title_is_complete && !is_complete) {
         $('#assistant-tooltips').append('未勾选合集<br/>');
         error = true;
-    }
+    } */
     if (title_group && !group) {
         $('#assistant-tooltips').append('未选择制作组' + group_constant[title_group] + '<br/>');
         error = true;
