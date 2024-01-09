@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.0.6
+// @version      0.0.7
 // @description  Agsv审种助手
 // @author       Exception
 // @match        *://*.agsvpt.com/details.php*
@@ -428,7 +428,7 @@
         if (td.text().trim() == '海报') {
             poster = $('#kposter').children().attr('src');
         }
-        if (td.text().trim() == "IMDb信息") {
+        /* if (td.text().trim() == "IMDb信息") {
             if (td.parent().last().find("a").text() == "这里"){
                 var fullUrl = new URL(href, window.location.origin).toString();
                 td.parent().find("a").attr("href",fullUrl);
@@ -442,7 +442,7 @@
             console.log(md.children().children().first().innerHTML);
             mediainfo_short = $('.mediainfo-short .codemain').text().replace(/\s+/g, '');
             mediainfo = $('.mediainfo-raw .codemain').text().replace(/\s+/g, '');
-        }
+        } */
     }
     let imdbUrl = $('#kimdb a').attr("href")
     /* if (imdbText.indexOf('douban') >= 0) {
@@ -472,7 +472,7 @@
     });
  
     let error = false;
-    $('#top').prepend('<div style="display: inline-block; padding: 10px 30px; color: white; background: red; font-weight: bold;" id="assistant-tooltips"></div><br>');
+    $('#outer').prepend('<div style="display: inline-block; padding: 10px 30px; color: white; background: red; font-weight: bold;" id="assistant-tooltips"></div><br>');
     /* if (/\s+/.test(title)) {
         $('#assistant-tooltips').append('主标题包含空格<br/>');
         error = true;
