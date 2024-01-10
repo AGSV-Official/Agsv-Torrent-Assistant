@@ -1,20 +1,22 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.1.0
+// @version      0.1.2
 // @description  Agsv审种助手
-// @author       Exception
+// @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
 // @require      https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js
 // @grant        GM_xmlhttpRequest
 // @license      MIT
+// @downloadURL https://update.greasyfork.org/scripts/482900/Agsv-Torrent-Assistant.user.js
+// @updateURL https://update.greasyfork.org/scripts/482900/Agsv-Torrent-Assistant.meta.js
 // ==/UserScript==
- 
+
 /**
  * /**
  * 改自SpringSunday-Torrent-Assistant https://greasyfork.org/zh-CN/scripts/448012-springsunday-torrent-assistant
  */
- 
+
 (function() {
     'use strict';
     /**
@@ -100,22 +102,22 @@
         21: 'AGSVWEB',
         16: 'Pack',
         22: 'Other'
- 
+
     }
- 
+
     const brief = $("#kdescr").text(); // 获取元素的文本内容
     const containsIMDbLink = brief.includes("imdb.com"); // 检查内容是否包含 imdb.com 链接
     const containsDoubanLink = brief.includes("douban.com"); // 检查内容是否包含 douban.com 链接
- 
-    var dbUrl;
+
+    var dbUrl; // 是否包含影片链接
     if (containsIMDbLink || containsDoubanLink) {
         dbUrl = true;
-        console.log("内容中包含 IMDb 或 Douban 链接");
+        // console.log("内容中包含 IMDb 或 Douban 链接");
     } else {
         dbUrl = false;
-        console.log("内容中不包含 IMDb 或 Douban 链接");
+        // console.log("内容中不包含 IMDb 或 Douban 链接");
     }
- 
+
     var title = $('#top').text();
     var exclusive = 0;
     if (title.indexOf('禁转') >= 0) {
@@ -125,6 +127,16 @@
     title = title.replace(/剩余时间.*/g,'').trim();
     title = title.replace("(禁止)",'').trim();
     console.log(title);
+
+    var officialSeed = 0;
+    if(title.includes("AGSV") || title.includes("AGSVPT") || title.includes("AGSVWEB")) {
+        officialSeed = 1;
+        // console.log("官种");
+    }
+    else {
+        // console.log("非官种");
+    }
+
  
     var title_lowercase = title.toLowerCase();
     var title_type, title_encode, title_audio, title_resolution, title_group, title_is_complete;
@@ -246,7 +258,7 @@
     var subtitle, cat, type, encode, audio, resolution, area, group, anonymous, is_complete,category;
     var poster;
     var fixtd, douban, imdb, mediainfo, mediainfo_short,mediainfo_err;
- 
+
     var tdlist = $('#outer').find('td');
     for (var i = 0; i < tdlist.length; i ++) {
         var td = $(tdlist[i]);
@@ -467,7 +479,7 @@
             }
         } 
     }
- 
+
     function containsBBCode(str) {
         // 创建一个正则表达式来匹配 [/b]、[/color] 等结束标签
         const regex = /\[\/(b|color|i|u|url|img)\]/;
@@ -475,7 +487,7 @@
         // 使用正则表达式的 test 方法来检查字符串
         return regex.test(str);
     }    
- 
+
     let imdbUrl = $('#kimdb a').attr("href")
     /* if (imdbText.indexOf('douban') >= 0) {
         douban = $(element).attr('title');
@@ -504,7 +516,9 @@
     });
  
     let error = false;
-    $('#outer').prepend('<div style="display: inline-block; padding: 10px 30px; color: white; background: red; font-weight: bold;" id="assistant-tooltips"></div><br>');
+    let warning = false;
+    $('#outer').prepend('<div style="display: inline-block; padding: 10px 30px; color: black; background: #ffdd59; font-weight: bold; border-radius: 5px; margin: 4px"; display: block; position: fixed;bottom: 0;right: 0;box-shadow: 0 0 10px rgba(0,0,0,0.5); id="assistant-tooltips-warning"></div><br>');
+    $('#outer').prepend('<div style="display: inline-block; padding: 10px 30px; color: white; background: #F44336; font-weight: bold; border-radius: 5px; margin: 4px"; display: block; position: fixed;bottom: 0;right: 0;box-shadow: 0 0 10px rgba(0,0,0,0.5); id="assistant-tooltips"></div><br>');
     /* if (/\s+/.test(title)) {
         $('#assistant-tooltips').append('主标题包含空格<br/>');
         error = true;
@@ -577,11 +591,16 @@
         $('#assistant-tooltips').append('未检测到IMDb或豆瓣链接<br/>');
         error = true;
     }
-    if(mediainfo_short === mediainfo) {
+
+    if(mediainfo_short === mediainfo && officialSeed == true) {
         $('#assistant-tooltips').append('媒体信息未解析<br/>');
         error = true;
     }
- 
+    if(mediainfo_short === mediainfo && officialSeed == false) {
+        $('#assistant-tooltips-warning').append('媒体信息未解析<br/>');
+        warning = true;
+    }
+
     if(mediainfo_err) {
         $('#assistant-tooltips').append(mediainfo_err).append('<br/>');
         error = true;
@@ -603,7 +622,7 @@
         $('#assistant-tooltips').append('图片未满2张,请检查海报和预览图<br/>');
         error = true;
     } 
- 
+
     var douban_area, douban_cat;
     if (douban) {
         GM_xmlhttpRequest({
@@ -725,10 +744,16 @@
         });
     } else {
         if (error) {
-            $('#assistant-tooltips').css('background', 'red');
+            $('#assistant-tooltips').css('background', '#EA2027');
         } else {
             $('#assistant-tooltips').append('此种子未检测到异常');
-            $('#assistant-tooltips').css('background', 'green');
+            $('#assistant-tooltips').css('background', '#8BC34A');
         }
+//         if (!warning) {
+//             $('#assistant-tooltips-warning').hide();
+//         }
+        $('#assistant-tooltips-warning').hide();
     }
+
+
 })();
