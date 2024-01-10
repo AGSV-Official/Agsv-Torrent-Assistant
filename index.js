@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.0.7
+// @version      0.0.8
 // @description  Agsv审种助手
 // @author       Exception
 // @match        *://*.agsvpt.com/details.php*
@@ -111,6 +111,7 @@
         exclusive = 1;
     }
     title = title.replace(/禁转|\((已审|冻结|待定)\)|\[(免费|50%|2X免费|30%|2X 50%)\]|\(限时\d+.*\)|\[2X\]|\[(推荐|热门|经典|已审)\]/g, '').trim();
+    title = title.replace(/剩余时间.*/g,'').trim()
     console.log(title);
  
     var title_lowercase = title.toLowerCase();
