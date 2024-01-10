@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.0.8
+// @version      0.0.9
 // @description  Agsv审种助手
 // @author       Exception
 // @match        *://*.agsvpt.com/details.php*
@@ -111,7 +111,8 @@
         exclusive = 1;
     }
     title = title.replace(/禁转|\((已审|冻结|待定)\)|\[(免费|50%|2X免费|30%|2X 50%)\]|\(限时\d+.*\)|\[2X\]|\[(推荐|热门|经典|已审)\]/g, '').trim();
-    title = title.replace(/剩余时间.*/g,'').trim()
+    title = title.replace(/剩余时间.*/g,'').trim();
+    title = title.replace("(禁止)",'').trim();
     console.log(title);
  
     var title_lowercase = title.toLowerCase();
@@ -233,7 +234,7 @@
  
     var subtitle, cat, type, encode, audio, resolution, area, group, anonymous, is_complete,category;
     var poster;
-    var fixtd, douban, imdb, mediainfo, mediainfo_short;
+    var fixtd, douban, imdb, mediainfo, mediainfo_short,mediainfo_err;
 
     var tdlist = $('#outer').find('td');
     for (var i = 0; i < tdlist.length; i ++) {
@@ -436,15 +437,34 @@
                 let href = td.parent().last().find("a").attr("href").trim();
                 td.parent().last().find("a").click();
             }
-        }
+        }*/
         if (td.text() == "MediaInfo"){
             //$(this).find("")
             let md = td.parent().children().last();
-            console.log(md.children().children().first().innerHTML);
-            mediainfo_short = $('.mediainfo-short .codemain').text().replace(/\s+/g, '');
-            mediainfo = $('.mediainfo-raw .codemain').text().replace(/\s+/g, '');
-        } */
+            console.log(md.text())
+            console.log(md.children('div').length)
+            console.log(md.children('table').length)
+            if (md.children('div').length>0) {
+                mediainfo_short = md.text().replace(/\s+/g, '');
+                mediainfo = md.text().replace(/\s+/g, '');
+            } else if  (md.children('table').length>0) {
+                mediainfo_short = md.children().children().children().eq(0).text().replace(/\s+/g, '');
+                mediainfo = md.children().children().children().eq(1).text().replace(/\s+/g, '');
+            }
+            if (containsBBCode(mediainfo) || containsBBCode(mediainfo_short)){
+                mediainfo_err = "mediaInfo中含有bbcode"
+            }
+        } 
     }
+
+    function containsBBCode(str) {
+        // 创建一个正则表达式来匹配 [/b]、[/color] 等结束标签
+        const regex = /\[\/(b|color|i|u|url|img)\]/;
+    
+        // 使用正则表达式的 test 方法来检查字符串
+        return regex.test(str);
+    }    
+
     let imdbUrl = $('#kimdb a').attr("href")
     /* if (imdbText.indexOf('douban') >= 0) {
         douban = $(element).attr('title');
@@ -542,10 +562,15 @@
         $('#assistant-tooltips').append('未检测到IMDb链接<br/>');
         error = true;
     } 
-    /* if(mediainfo_short === mediainfo) {
+    if(mediainfo_short === mediainfo) {
         $('#assistant-tooltips').append('媒体信息未解析<br/>');
         error = true;
-    } */
+    }
+
+    if(mediainfo_err) {
+        $('#assistant-tooltips').append(mediainfo_err).append('<br/>');
+        error = true;
+    }
     /* if (title_is_complete && !is_complete) {
         $('#assistant-tooltips').append('未勾选合集<br/>');
         error = true;
@@ -563,7 +588,7 @@
         $('#assistant-tooltips').append('图片未满2张,请检查海报和预览图<br/>');
         error = true;
     } 
- 
+
     var douban_area, douban_cat;
     if (douban) {
         GM_xmlhttpRequest({
