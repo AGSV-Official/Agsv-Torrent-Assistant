@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.1.8
+// @version      0.1.9
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
@@ -111,6 +111,12 @@
     } else {
         dbUrl = false;
         // console.log("内容中不包含 IMDb 或 Douban 链接");
+    }
+
+    var isBriefContainsInfo = false;
+    if (brief.includes("General") && brief.includes("Video") && brief.includes("Audio")) {
+        isBriefContainsInfo = true;
+        // console.log("简介中包含Mediainfo");
     }
 
     var title = $('#top').text();
@@ -564,6 +570,11 @@
 
     if (!officialSeed && isOfficialSeedLabel) {
         $('#assistant-tooltips').append('非官种不可选择官方标签<br/>');
+        error = true;
+    }
+
+    if (isBriefContainsInfo) {
+        $('#assistant-tooltips').append('简介中不可填写Mediainfo<br/>');
         error = true;
     }
 
