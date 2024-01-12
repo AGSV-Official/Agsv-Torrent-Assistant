@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.1.6
+// @version      0.1.7
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
@@ -12,16 +12,12 @@
 // @updateURL https://update.greasyfork.org/scripts/482900/Agsv-Torrent-Assistant.meta.js
 // ==/UserScript==
 
-/**
- * /**
+/*
  * 改自SpringSunday-Torrent-Assistant https://greasyfork.org/zh-CN/scripts/448012-springsunday-torrent-assistant
  */
 
 (function() {
     'use strict';
-    /**
-     * 
-     */
     var cat_constant = {
         401: 'Movie(电影)',
         402: 'TV Series(剧集)',
@@ -41,7 +37,7 @@
         418: 'Picture(图片)',
         419: 'Playlet(短剧)'
     };
- 
+
     var type_constant = {
         1: 'Blu-ray',
         2: 'DVD',
@@ -54,7 +50,7 @@
         12: 'Track',
         13: 'Other'
     };
- 
+
     var encode_constant = {
         1: 'H.264/AVC',
         2: 'VC-1',
@@ -63,7 +59,7 @@
         6: 'H.265/HEVC',
         12: 'AV1'
     };
- 
+
     var audio_constant = {
         1: 'FLAC',
         2: 'APE',
@@ -81,7 +77,7 @@
         18: 'DTS:X',
         19: 'DDP/E-AC3'
     };
- 
+
     var resolution_constant = {
         1: '1080p/1080i',
         3: '720p/720i',
@@ -90,11 +86,10 @@
         6: '8K/4320p/4320i',
         8: 'Other'
     };
- 
+
     var area_constant = {
-       
     }
- 
+
     var group_constant = {
         23: 'GodDramas',
         6: 'AGSVPT',
@@ -144,7 +139,6 @@
         //console.log("音乐官种");
     }
 
- 
     var title_lowercase = title.toLowerCase();
     console.log("title_lowercase:"+title_lowercase);
     var title_type, title_encode, title_audio, title_resolution, title_group, title_is_complete;
@@ -156,6 +150,8 @@
         title_type = 5;
     } else if (title_lowercase.includes("remux")) {
         title_type = 3;
+    } else if ((title_lowercase.includes("blu-ray") || title_lowercase.includes("bluray") || title_lowercase.includes("uhd blu-ray") || title_lowercase.includes("uhd bluray")) && (title_lowercase.includes("x265") || title_lowercase.includes("x264"))) {
+        title_type = 7;
     }
 
     // 视频编码
@@ -192,24 +188,6 @@
         title_resolution = 6;
     }
 
- 
-    // standard
-    if (title_lowercase.indexOf(".2160p") !== -1
-        || title_lowercase.indexOf(".uhd") !== -1
-        || title_lowercase.indexOf(".4k.") !== -1
-    ) {
-        title_resolution = 1;
-    } else if (title_lowercase.indexOf(".1080p") !== -1) {
-        title_resolution = 2;
-    } else if (title_lowercase.indexOf(".1080i") !== -1) {
-        title_resolution = 3;
-    } else if (title_lowercase.indexOf(".720p") !== -1) {
-        title_resolution = 4;
-    }
-    if (title_lowercase.indexOf('complete') !== -1) {
-        title_is_complete = true;
-    }
- 
     var subtitle, cat, type, encode, audio, resolution, area, group, anonymous, is_complete,category;
     var poster;
     var fixtd, douban, imdb, mediainfo, mediainfo_short,mediainfo_err;
@@ -222,7 +200,7 @@
         if (td.text() == '副标题' || td.text() == '副標題') {
             subtitle = td.parent().children().last().text();
         }
- 
+
         if (td.text() == '添加') {
             var text = td.parent().children().last().text();
             if (text.indexOf('匿名') >= 0) {
@@ -286,7 +264,7 @@
                 is_complete = true;
             }
             console.log("cat:"+cat);
- 
+
             // 格式
             if (text.indexOf('Blu-ray') >= 0) {
                 type = 1;
@@ -308,7 +286,7 @@
                 type = 12;
             } else if (text.indexOf('Other') >= 0) {
                 type = 13;
-            } 
+            }
             console.log("type:"+type);
             // 视频编码
             if (text.indexOf('H.265/HEVC')  >= 0) {
@@ -358,7 +336,6 @@
                 audio = 7;
             }
             console.log("audio:"+audio);
-            
             // 分辨率
             if (text.indexOf('2160p') >= 0) {
                 resolution = 5;
@@ -406,18 +383,18 @@
                 category = 16;
             } else if (text.indexOf('Other') >= 0) {
                 category = 22;
-            }            
+            }
             console.log("category:"+category)
         }
- 
+
         if (td.text() == '副标题' || td.text() == '副標題') {
             subtitle = td.parent().children().last().text();
         }
- 
+
         if (td.text() == '行为') {
             fixtd = td.parent().children().last();
         }
- 
+
         if (td.text().trim() == '海报') {
             poster = $('#kposter').children().attr('src');
         }
@@ -443,18 +420,18 @@
                 mediainfo = md.children().children().children().eq(1).text().replace(/\s+/g, '');
             }
             if (containsBBCode(mediainfo) || containsBBCode(mediainfo_short)){
-                mediainfo_err = "mediaInfo中含有bbcode"
+                mediainfo_err = "MediaInfo中含有bbcode"
             }
-        } 
+        }
     }
 
     function containsBBCode(str) {
         // 创建一个正则表达式来匹配 [/b]、[/color] 等结束标签
         const regex = /\[\/(b|color|i|u|url|img)\]/;
-    
+
         // 使用正则表达式的 test 方法来检查字符串
         return regex.test(str);
-    }    
+    }
 
     let imdbUrl = $('#kimdb a').attr("href")
     /* if (imdbText.indexOf('douban') >= 0) {
@@ -464,8 +441,7 @@
     /* if (imdbText.indexOf('imdb') >= 0) {
         imdb = $(element).attr('title');
     } */
-    
-      
+
     var screenshot = '';
     var pngCount = 0;
     var imgCount = 0;
@@ -482,7 +458,7 @@
         }
         imgCount++;
     });
- 
+
     let error = false;
     let warning = false;
     $('#outer').prepend('<div style="display: inline-block; padding: 10px 30px; color: black; background: #ffdd59; font-weight: bold; border-radius: 5px; margin: 4px"; display: block; position: fixed;bottom: 0;right: 0;box-shadow: 0 0 10px rgba(0,0,0,0.5); id="assistant-tooltips-warning"></div><br>');
@@ -579,7 +555,7 @@
         $('#assistant-tooltips').append('未选择禁转标签<br/>');
         error = true;
     }
- 
+
     /* if (pngCount < 3) {
         $('#assistant-tooltips').append('PNG格式的图片未满3张<br/>');
         error = true;
@@ -587,7 +563,7 @@
     if (imgCount < 1) {
         $('#assistant-tooltips').append('图片未满2张,请检查海报和预览图<br/>');
         error = true;
-    } 
+    }
 
     var douban_area, douban_cat;
     if (douban) {
@@ -597,7 +573,7 @@
             headers: {"Content-Type": "application/x-www-form-urlencoded"},
             onload: function(response) {
                 var html = $.parseHTML(response.responseText);
- 
+
                 var isshow, isdoc, isani;
                 var douban_genres = $(html).find('#info span[property="v:genre"]');
                 if (douban_genres) {
@@ -613,18 +589,18 @@
                         }
                     })
                 }
- 
+
                 var type = null;
                 var comm_condition = $(html).find('div span.rec a').eq(0);
                 if (comm_condition) {
                     type = $(comm_condition).attr('data-type');
                 }
- 
+
                 var res = $(html).find('#info').contents()
                     .filter(function() {
                         return this.nodeType == 3;
                     }).text();
- 
+
                 var result = [];
                 var array = res.split('\n');
                 for (var i = 0; i < array.length; i++) {
@@ -641,12 +617,12 @@
                         }
                     }
                 }
- 
+
                 var country = result[0][0];
                 console.log('country ' + country);
- 
+
                 // 地区判定
- 
+
                 if (country == '中国大陆') {
                     douban_area = 1;
                 } else if (country == '中国香港') {
@@ -669,7 +645,7 @@
                 } else {
                     douban_area = 99;
                 }
- 
+
                 if (type == '电视剧') {
                     if (isshow) {
                         douban_cat = 505;
@@ -689,17 +665,17 @@
                         douban_cat = 501;
                     }
                 }
- 
+
                 if (cat && douban_cat && douban_cat >= 501 && douban_cat <= 505 && douban_cat !== cat) {
                     $('#assistant-tooltips').append("豆瓣检测分类为" + cat_constant[douban_cat] + "，选择分类为" + cat_constant[cat] + '<br/>');
                     error = true;
                 }
- 
+
                 if (area && douban_area && douban_area !== area) {
                     $('#assistant-tooltips').append("豆瓣检测地区为" + area_constant[douban_area] + "，选择地区为" + area_constant[area] + '<br/>');
                     error = true;
                 }
- 
+
                 if (error) {
                     $('#assistant-tooltips').css('background', 'red');
                 } else {
