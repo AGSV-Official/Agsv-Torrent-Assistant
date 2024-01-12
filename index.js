@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.1.7
+// @version      0.1.8
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
@@ -126,7 +126,7 @@
     var officialSeed = 0; //官组种子
     var godDramaSeed = 0; //驻站短剧组种子
     var officialMusicSeed = 0; //官组音乐种子
-    if(title.includes("AGSV") || title.includes("AGSVPT") || title.includes("AGSVWEB") || title.includes("GodDramas")) {
+    if(title.includes("AGSV") || title.includes("AGSVPT") || title.includes("AGSVWEB") || title.includes("AGSVMUS")) {
         officialSeed = 1;
         //console.log("官种");
     }
@@ -193,6 +193,7 @@
     var fixtd, douban, imdb, mediainfo, mediainfo_short,mediainfo_err;
     var isGroupSelected = false; //是否选择了制作组
     var isReseedProhibited = false; //是否选择了禁转标签
+    var isOfficialSeedLabel = false; //是否选择了官种标签
 
     var tdlist = $('#outer').find('td');
     for (var i = 0; i < tdlist.length; i ++) {
@@ -210,9 +211,14 @@
 
         if (td.text() == '标签') {
             var text = td.parent().children().last().text();
+            //console.log('标签: '+text);
             if(text.includes("禁转")){
                 isReseedProhibited = true;
                 //console.log("已选择禁转标签");
+            }
+            if(text.includes("官方")){
+                isOfficialSeedLabel = true;
+                //console.log("已选择官方标签");
             }
         }
 
@@ -553,6 +559,11 @@
 
     if (godDramaSeed && !isReseedProhibited) {
         $('#assistant-tooltips').append('未选择禁转标签<br/>');
+        error = true;
+    }
+
+    if (!officialSeed && isOfficialSeedLabel) {
+        $('#assistant-tooltips').append('非官种不可选择官方标签<br/>');
         error = true;
     }
 
