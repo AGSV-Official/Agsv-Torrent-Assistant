@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.1.3
+// @version      0.1.4
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
@@ -126,8 +126,9 @@
     title = title.replace("(禁止)",'').trim();
     console.log(title);
  
-    var officialSeed = 0;
-    var godDramaSeed = 0;
+    var officialSeed = 0; //官组种子
+    var godDramaSeed = 0; //驻站短剧组种子
+    var officialMusicSeed = 0; //官组音乐种子
     if(title.includes("AGSV") || title.includes("AGSVPT") || title.includes("AGSVWEB") || title.includes("GodDramas")) {
         officialSeed = 1;
         console.log("官种");
@@ -138,6 +139,10 @@
     if(title.includes("GodDramas")) {
         godDramaSeed = 1;
         console.log("短剧种");
+    }
+    if(title.includes("AGSVMUS")) {
+        officialMusicSeed = 1;
+        console.log("音乐官种");
     }
  
  
@@ -632,10 +637,21 @@
 //         error = true;
 //     }
  
+ 
     if (officialSeed && !isGroupSelected) {
         $('#assistant-tooltips').append('未选择制作组<br/>');
         error = true;
     }
+ 
+    if (officialMusicSeed) {
+        $('#assistant-tooltips').empty();
+        error = false;
+        if (!isGroupSelected) {
+            $('#assistant-tooltips').append('未选择制作组<br/>');
+            error = true;
+        }
+    }
+ 
     if (godDramaSeed && !isReseedProhibited) {
         $('#assistant-tooltips').append('未选择禁转标签<br/>');
         error = true;
