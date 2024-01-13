@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.1.9
+// @version      0.2.7
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
@@ -100,7 +100,7 @@
 
     }
 
-    const brief = $("#kdescr").text(); // 获取元素的文本内容
+    const brief = $("#kdescr").text().toLowerCase(); // 获取元素的文本内容
     const containsIMDbLink = brief.includes("imdb.com"); // 检查内容是否包含 imdb.com 链接
     const containsDoubanLink = brief.includes("douban.com"); // 检查内容是否包含 douban.com 链接
 
@@ -113,10 +113,21 @@
         // console.log("内容中不包含 IMDb 或 Douban 链接");
     }
 
-    var isBriefContainsInfo = false;
-    if (brief.includes("General") && brief.includes("Video") && brief.includes("Audio")) {
+    var isBriefContainsInfo = false;  //是否包含Mediainfo
+    if (brief.includes("general") && brief.includes("video") && brief.includes("audio")) {
         isBriefContainsInfo = true;
         // console.log("简介中包含Mediainfo");
+    }
+    if (brief.includes("disc info") || brief.includes(".release.info") || brief.includes("general information")) {
+        isBriefContainsInfo = true;
+    }
+    // 杜比官种
+    if (brief.includes("nfo信息")) {
+        isBriefContainsInfo = true;
+    }
+    // frds官种
+    if (brief.includes("release date") && brief.includes("source")) {
+        isBriefContainsInfo = true;
     }
 
     var title = $('#top').text();
@@ -157,6 +168,8 @@
     } else if (title_lowercase.includes("remux")) {
         title_type = 3;
     } else if ((title_lowercase.includes("blu-ray") || title_lowercase.includes("bluray") || title_lowercase.includes("uhd blu-ray") || title_lowercase.includes("uhd bluray")) && (title_lowercase.includes("x265") || title_lowercase.includes("x264"))) {
+        title_type = 7;
+    } else if (title_lowercase.includes("webrip") || title_lowercase.includes("dvdrip") || title_lowercase.includes("bdrip")) {
         title_type = 7;
     }
 
@@ -200,6 +213,7 @@
     var isGroupSelected = false; //是否选择了制作组
     var isReseedProhibited = false; //是否选择了禁转标签
     var isOfficialSeedLabel = false; //是否选择了官种标签
+    var isMediainfoEmpty = false; //Mediainfo栏内容是否为空
 
     var tdlist = $('#outer').find('td');
     for (var i = 0; i < tdlist.length; i ++) {
@@ -421,6 +435,10 @@
         if (td.text() == "MediaInfo"){
             //$(this).find("")
             let md = td.parent().children().last();
+            if(md.text()==""){
+                isMediainfoEmpty = true;
+                //console.log("MediaInfo栏为空");
+            }
             //console.log(md.text())
             //console.log(md.children('div').length)
             //console.log(md.children('table').length)
@@ -431,7 +449,7 @@
                 mediainfo_short = md.children().children().children().eq(0).text().replace(/\s+/g, '');
                 mediainfo = md.children().children().children().eq(1).text().replace(/\s+/g, '');
             }
-            if (containsBBCode(mediainfo) || containsBBCode(mediainfo_short)){
+            if ((containsBBCode(mediainfo) || containsBBCode(mediainfo_short)) && mediainfo_short === mediainfo){
                 mediainfo_err = "MediaInfo中含有bbcode"
             }
         }
@@ -439,7 +457,7 @@
 
     function containsBBCode(str) {
         // 创建一个正则表达式来匹配 [/b]、[/color] 等结束标签
-        const regex = /\[\/(b|color|i|u|url|img)\]/;
+        const regex = /\[\/(b|color|i|u|img)\]/;
 
         // 使用正则表达式的 test 方法来检查字符串
         return regex.test(str);
@@ -492,12 +510,12 @@
         error = true;
     }
     if (!type) {
-        $('#assistant-tooltips').append('未选择格式<br/>');
+        $('#assistant-tooltips').append('未选择媒介<br/>');
         error = true;
     } else {
         // console.log("标题检测格式为" + type_constant[title_type] + "，选择格式为" + type_constant[type]);
         if (title_type && title_type !== type) {
-            $('#assistant-tooltips').append("标题检测格式为" + type_constant[title_type] + "，选择格式为" + type_constant[type] + '<br/>');
+            $('#assistant-tooltips').append("标题检测媒介为" + type_constant[title_type] + "，选择媒介为" + type_constant[type] + '<br/>');
             error = true;
         }
     }
@@ -574,7 +592,7 @@
     }
 
     if (isBriefContainsInfo) {
-        $('#assistant-tooltips').append('简介中不可填写Mediainfo<br/>');
+        $('#assistant-tooltips').append('简介中包含Mediainfo<br/>');
         error = true;
     }
 
@@ -582,8 +600,12 @@
         $('#assistant-tooltips').append('PNG格式的图片未满3张<br/>');
         error = true;
     } */
-    if (imgCount < 1) {
-        $('#assistant-tooltips').append('图片未满2张,请检查海报和预览图<br/>');
+    if (imgCount < 2) {
+        $('#assistant-tooltips').append('缺少海报或截图<br/>');
+        error = true;
+    }
+    if (isMediainfoEmpty) {
+        $('#assistant-tooltips').append('Mediainfo栏为空<br/>');
         error = true;
     }
 
