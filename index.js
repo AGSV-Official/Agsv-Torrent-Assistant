@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.2.7
+// @version      0.3.4
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
@@ -114,7 +114,13 @@
     }
 
     var isBriefContainsInfo = false;  //是否包含Mediainfo
+    // 英文详细info
     if (brief.includes("general") && brief.includes("video") && brief.includes("audio")) {
+        isBriefContainsInfo = true;
+        // console.log("简介中包含Mediainfo");
+    }
+    // 中文详细info
+    if (brief.includes("概览") && brief.includes("视频") && brief.includes("音频")) {
         isBriefContainsInfo = true;
         // console.log("简介中包含Mediainfo");
     }
@@ -188,11 +194,17 @@
     //console.log("title_encode:"+title_encode);
 
     // 音频 可能有多个音频，选择与标题不一致，跳过
-//     if(title_lowercase.includes("dts")){
-//         title_audio = 3;
-//     } else if (title_lowercase.includes("flac")) {
-//         title_audio = 6;
-//     }
+    if (title_lowercase.includes("flac")) {
+        title_audio = 1;
+    } else if (title_lowercase.includes("lpcm")) {
+        title_audio = 10;
+    } else if (title_lowercase.includes("ddp") || title_lowercase.includes("dd+")) {
+        title_audio = 19;
+    } else if (title_lowercase.includes("aac")) {
+        title_audio = 6;
+    } else if (title_lowercase.includes("ac3")) {
+        title_audio = 11;
+    }
 
     // 分辨率
     if(title_lowercase.includes("1080p") || title_lowercase.includes("1080i")){
@@ -310,7 +322,7 @@
                 type = 11;
             } else if (text.indexOf('Track') >= 0) {
                 type = 12;
-            } else if (text.indexOf('Other') >= 0) {
+            } else if (text.indexOf('媒介: Other') >= 0) {
                 type = 13;
             }
             console.log("type:"+type);
@@ -325,10 +337,11 @@
                 encode = 4;
             } else if (text.indexOf('AV1')  >= 0) {
                 encode = 12;
-            }else if (text.indexOf('Other')  >= 0) {
+            }else if (text.indexOf('编码: Other')  >= 0) {
                 encode = 5;
             }
             console.log("encode:"+encode);
+            //console.log("audio:"+audio);
             // 音频编码
             if (text.indexOf('DTS-HD MA') >= 0) {
                 audio = 8;
@@ -358,7 +371,7 @@
                 audio = 17;
             } else if (text.indexOf('DDP/E-AC3') >= 0) {
                 audio = 19;
-            } else if (text.indexOf('Other') >= 0) {
+            } else if (text.indexOf('音频编码: Other') >= 0) {
                 audio = 7;
             }
             console.log("audio:"+audio);
@@ -373,6 +386,8 @@
                 resolution = 3;
             } else if (text.indexOf('480') >= 0) {
                 resolution = 4;
+            } else if (text.indexOf('分辨率: Other') >= 0) {
+                resolution = 8;
             }
             console.log("resolution:"+resolution);
             // 地区
@@ -407,7 +422,7 @@
                 category = 21;
             } else if (text.indexOf('Pack') >= 0) {
                 category = 16;
-            } else if (text.indexOf('Other') >= 0) {
+            } else if (text.indexOf('制作组: Other') >= 0) {
                 category = 22;
             }
             console.log("category:"+category)
@@ -534,8 +549,9 @@
         error = true;
     } else {
         if (title_audio && title_audio !== audio) {
-            $('#assistant-tooltips').append("标题检测音频编码为" + audio_constant[title_audio] + "，选择音频编码为" + audio_constant[audio] + '<br/>');
-            error = true;
+            console.log("标题检测音频编码为" + audio_constant[title_audio] + "，选择音频编码为" + audio_constant[audio]);
+            $('#assistant-tooltips-warning').append("标题检测音频编码为" + audio_constant[title_audio] + "，选择音频编码为" + audio_constant[audio] + '<br/>');
+            warning = true;
         }
     }
     if (!resolution) {
@@ -558,8 +574,8 @@
         error = true;
     }
     if(mediainfo_short === mediainfo && officialSeed == false) {
-        $('#assistant-tooltips-warning').append('媒体信息未解析<br/>');
-        warning = true;
+        // $('#assistant-tooltips-warning').append('媒体信息未解析<br/>');
+        // warning = true;
     }
 
     if(mediainfo_err) {
@@ -735,10 +751,11 @@
             $('#assistant-tooltips').append('此种子未检测到异常');
             $('#assistant-tooltips').css('background', '#8BC34A');
         }
-//         if (!warning) {
-//             $('#assistant-tooltips-warning').hide();
-//         }
-        $('#assistant-tooltips-warning').hide();
+        if (!warning) {
+            $('#assistant-tooltips-warning').hide();
+        }
+        // $('#assistant-tooltips-warning').hide();
+        console.log("warning:"+warning);
     }
 
 
