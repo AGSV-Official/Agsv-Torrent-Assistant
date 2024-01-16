@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.3.4
+// @version      0.3.5
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=agsvpt.com
 // @require      https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js
 // @grant        GM_xmlhttpRequest
 // @license      MIT
@@ -512,7 +513,7 @@
         $('#assistant-tooltips').append('主标题包含空格<br/>');
         error = true;
     } */
-    if(/[^\x00-\xff]+/g.test(title)) {
+    if(/[^\x00-\xff]+/g.test(title) && !title.includes('￡')) {
         $('#assistant-tooltips').append('主标题包含中文或中文字符<br/>');
         error = true;
     }
@@ -588,15 +589,6 @@
         error = true;
     }
 
-    if (officialMusicSeed) {
-        $('#assistant-tooltips').empty();
-        error = false;
-        if (!isGroupSelected) {
-            $('#assistant-tooltips').append('未选择制作组<br/>');
-            error = true;
-        }
-    }
-
     if (godDramaSeed && !isReseedProhibited) {
         $('#assistant-tooltips').append('未选择禁转标签<br/>');
         error = true;
@@ -623,6 +615,15 @@
     if (isMediainfoEmpty) {
         $('#assistant-tooltips').append('Mediainfo栏为空<br/>');
         error = true;
+    }
+
+    if (officialMusicSeed) {
+        $('#assistant-tooltips').empty();
+        error = false;
+        if (!isGroupSelected) {
+            $('#assistant-tooltips').append('未选择制作组<br/>');
+            error = true;
+        }
     }
 
     var douban_area, douban_cat;
