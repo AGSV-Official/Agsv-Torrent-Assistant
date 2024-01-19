@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Agsv-Torrent-Assistant-Demo
+// @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.4.4
+// @version      0.5.0
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
@@ -12,8 +12,8 @@
 // @grant        GM_getValue
 // @grant        GM_xmlhttpRequest
 // @license      MIT
-// @downloadURL https://update.greasyfork.org/scripts/485197/Agsv-Torrent-Assistant-Demo.user.js
-// @updateURL https://update.greasyfork.org/scripts/485197/Agsv-Torrent-Assistant-Demo.meta.js
+// @downloadURL https://update.greasyfork.org/scripts/482900/Agsv-Torrent-Assistant.user.js
+// @updateURL https://update.greasyfork.org/scripts/482900/Agsv-Torrent-Assistant.meta.js
 // ==/UserScript==
 
 /*
@@ -582,20 +582,20 @@
         }
     }
 
-    $('#assistant-tooltips').click(function(){
-        if (error && isFoundReviewLink) {
-            GM_setValue('autoFillErrorInfo', true);
-            // console.log("errorinfo_before:"+$("#approval-comment").html());
-            GM_setValue('errorInfo', document.getElementById('assistant-tooltips').innerHTML);
-            // 找到并点击指定按钮
-            var specifiedButton = document.querySelector('#approval'); // 替换为实际的按钮选择器
-            if (specifiedButton) {
-                specifiedButton.click();
-            }
-        } else {
-            console.log("当前种子无错误或非种审人员，点击无效");
-        }
-    });
+//     $('#assistant-tooltips').click(function(){
+//         if (error && isFoundReviewLink) {
+//             GM_setValue('autoFillErrorInfo', true);
+//             // console.log("errorinfo_before:"+$("#approval-comment").html());
+//             GM_setValue('errorInfo', document.getElementById('assistant-tooltips').innerHTML);
+//             // 找到并点击指定按钮
+//             var specifiedButton = document.querySelector('#approval'); // 替换为实际的按钮选择器
+//             if (specifiedButton) {
+//                 specifiedButton.click();
+//             }
+//         } else {
+//             console.log("当前种子无错误或非种审人员，点击无效");
+//         }
+//     });
 
     // 主页面操作
     if (/https:\/\/.*\.agsvpt\.com\/details\.php\?id=.*/.test(window.location.href)) {
@@ -619,11 +619,15 @@
                 if (radioDenyButton) {
                     radioDenyButton.checked = true;
                 }
-
-                $("#approval-comment").text(GM_getValue('errorInfo', ""));
+                var errorInfo = GM_getValue('errorInfo', "");
+                console.log("errorInfo: "+errorInfo);
+                errorInfo = errorInfo.replace("MediaInfo中含有bbcode", "请将MediaInfo中多余的标签删除，例如：[b][color=royalblue]******[/color][/b]");
+                console.log("errorInfo: "+errorInfo);
+                $("#approval-comment").text(errorInfo);
 
                 // 完成操作后，清除标记
-                GM_setValue('autoFillErrorInfo', false);
+                // GM_setValue('autoFillErrorInfo', false);
+                // GM_setValue('errorInfo', "");
             }else if (GM_getValue('autoCheckAndConfirm', false)) {
                 var radioPassButton = document.querySelector("body > div.form-comments > form > div:nth-child(3) > div > div:nth-child(4) > div").click();
                 if (radioPassButton) {
@@ -763,6 +767,17 @@
     if (cat === 413 || cat === 418 || cat === 415 || cat === 412 || cat === 411) {
         $('#assistant-tooltips').empty();
         error = false;
+    }
+
+    // 种子存在错误便设置变量
+    if (error && isFoundReviewLink) {
+        GM_setValue('autoFillErrorInfo', true);
+        // console.log("errorinfo_before:"+$("#approval-comment").html());
+        GM_setValue('errorInfo', document.getElementById('assistant-tooltips').innerHTML);
+        //console.log("GM_getValue:"+GM_getValue('errorInfo'));
+    } else if (!error) {
+        GM_setValue('autoFillErrorInfo', false);
+        // GM_setValue('errorInfo', "");
     }
 
     var douban_area, douban_cat;
