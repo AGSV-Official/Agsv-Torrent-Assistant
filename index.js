@@ -28,7 +28,7 @@
     var fontsize = "9pt";          // 一键通过按钮的字体大小
     var timeout = 200;             // 弹出页内鼠标点击间隔，单位毫秒，设置越小点击越快，但是对网络要求更高
     var biggerbutton = 0;          // 是否将按钮放大
-    var biggerbuttonsize = "30pt"; // 放大的按钮大小
+    var biggerbuttonsize = "90pt"; // 放大的按钮大小
 
     var cat_constant = {
         401: 'Movie(电影)',
@@ -544,107 +544,6 @@
             $('#top').after('<div style="display: inline-block; padding: 10px 30px; color: white; background: #F44336; font-weight: bold; border-radius: 5px; margin: 0px"; display: block; position: fixed;bottom: 0;right: 0;box-shadow: 0 0 10px rgba(0,0,0,0.5); id="assistant-tooltips"></div><br><div style="display: inline-block; padding: 10px 30px; color: black; background: #ffdd59; font-weight: bold; border-radius: 5px; margin: 4px"; display: block; position: fixed;bottom: 0;right: 0;box-shadow: 0 0 10px rgba(0,0,0,0.5); id="assistant-tooltips-warning"></div><br>');
     }
 
-    var isFoundReviewLink = false; // 是否有审核按钮（仅有权限人员可一键填入错误信息）
-    // 添加一键通过按钮到页面
-    function addApproveLink() {
-        var tdlist = $('#outer').find('td');
-        var text;
-        for (var i = 0; i < tdlist.length; i ++) {
-            var td = $(tdlist[i]);
-
-            if (td.text() == '行为') {
-                var elements = td.parent().children().last();
-                elements.contents().each(function() {
-                    // console.log(this.textContent);
-                    if (isFoundReviewLink) {
-                        $(this).before(' | <a href="javascript:;" id="approvelink" class="small"><b><font><svg t="1655224943277" class="icon" viewBox="0 0 1397 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="45530" width="16" height="16"><path d="M1396.363636 121.018182c0 0-223.418182 74.472727-484.072727 372.363636-242.036364 269.963636-297.890909 381.672727-390.981818 530.618182C512 1014.690909 372.363636 744.727273 0 549.236364l195.490909-186.181818c0 0 176.872727 121.018182 297.890909 344.436364 0 0 307.2-474.763636 902.981818-707.490909L1396.363636 121.018182 1396.363636 121.018182zM1396.363636 121.018182" p-id="45531" fill="#8BC34A"></path></svg><svg t="1655224943277" class="icon" viewBox="0 0 1397 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="45530" width="16" height="16"><path d="M1396.363636 121.018182c0 0-223.418182 74.472727-484.072727 372.363636-242.036364 269.963636-297.890909 381.672727-390.981818 530.618182C512 1014.690909 372.363636 744.727273 0 549.236364l195.490909-186.181818c0 0 176.872727 121.018182 297.890909 344.436364 0 0 307.2-474.763636 902.981818-707.490909L1396.363636 121.018182 1396.363636 121.018182zM1396.363636 121.018182" p-id="45531" fill="#8BC34A"></path></svg>&nbsp;一键通过</font></b></a>'); // Add new hyperlink and separator
-                        var actionLink = document.querySelector('#approvelink');
-                        actionLink.style.fontSize = fontsize;
-                        actionLink.addEventListener('click', function(event) {
-                            event.preventDefault(); // 阻止超链接的默认行为
-                            // 设置标记以供新页面使用
-                            GM_setValue('autoCheckAndConfirm', true);
-                            // 找到并点击指定按钮
-                            var specifiedButton = document.querySelector('#approval'); // 替换为实际的按钮选择器
-                            if (specifiedButton) {
-                                specifiedButton.click();
-                            }
-                        });
-                        return false; // Exit the loop
-                    }
-
-                    if (this.textContent.includes('审核')) { // Check for text nodes containing the separator
-                        console.log("找到审核按钮");
-                        isFoundReviewLink = true;
-                    }
-                });
-            }
-        }
-    }
-
-//     $('#assistant-tooltips').click(function(){
-//         if (error && isFoundReviewLink) {
-//             GM_setValue('autoFillErrorInfo', true);
-//             // console.log("errorinfo_before:"+$("#approval-comment").html());
-//             GM_setValue('errorInfo', document.getElementById('assistant-tooltips').innerHTML);
-//             // 找到并点击指定按钮
-//             var specifiedButton = document.querySelector('#approval'); // 替换为实际的按钮选择器
-//             if (specifiedButton) {
-//                 specifiedButton.click();
-//             }
-//         } else {
-//             console.log("当前种子无错误或非种审人员，点击无效");
-//         }
-//     });
-
-    // 主页面操作
-    if (/https:\/\/.*\.agsvpt\.com\/details\.php\?id=.*/.test(window.location.href)) {
-        addApproveLink();
-        if (biggerbutton) {
-            if ($('#assistant-tooltips').text() === "此种子未检测到错误"){
-                console.log("此种子未检测到错误");
-                document.querySelector('#approval').style.fontSize = biggerbuttonsize;
-            } else{
-                document.querySelector('#approvelink').style.fontSize = biggerbuttonsize;
-            }
-        }
-    }
-
-    // 弹出页的操作
-    if (/https:\/\/.*\.agsvpt\.com\/web\/torrent-approval-page\?torrent_id=.*/.test(window.location.href)) {
-        // 使用延迟来等待页面可能的异步加载
-        setTimeout(function() {
-            if (GM_getValue('autoFillErrorInfo', false)) {
-                var radioDenyButton = document.querySelector("body > div.form-comments > form > div:nth-child(3) > div > div:nth-child(6)").click();
-                if (radioDenyButton) {
-                    radioDenyButton.checked = true;
-                }
-                var errorInfo = GM_getValue('errorInfo', "");
-                console.log("errorInfo: "+errorInfo);
-                errorInfo = errorInfo.replace("MediaInfo中含有bbcode", "请将MediaInfo中多余的标签删除，例如：[b][color=royalblue]******[/color][/b]");
-                console.log("errorInfo: "+errorInfo);
-                $("#approval-comment").text(errorInfo);
-
-                // 完成操作后，清除标记
-                // GM_setValue('autoFillErrorInfo', false);
-                // GM_setValue('errorInfo', "");
-            }else if (GM_getValue('autoCheckAndConfirm', false)) {
-                var radioPassButton = document.querySelector("body > div.form-comments > form > div:nth-child(3) > div > div:nth-child(4) > div").click();
-                if (radioPassButton) {
-                    radioPassButton.checked = true;
-                }
-
-                var confirmButton = document.querySelector("body > div.form-comments > form > div:nth-child(5) > div > button:nth-child(1)");
-                if (confirmButton) {
-                    confirmButton.click();
-                }
-
-                // 完成操作后，清除标记
-                GM_setValue('autoCheckAndConfirm', false);
-            }
-        }, timeout); // 可能需要根据实际情况调整延迟时间
-    }
-
     /* if (/\s+/.test(title)) {
         $('#assistant-tooltips').append('主标题包含空格<br/>');
         error = true;
@@ -769,149 +668,129 @@
         error = false;
     }
 
+    var isFoundReviewLink = false; // 是否有审核按钮（仅有权限人员可一键填入错误信息）
+    // 添加一键通过按钮到页面
+    function addApproveLink() {
+        var tdlist = $('#outer').find('td');
+        var text;
+        for (var i = 0; i < tdlist.length; i ++) {
+            var td = $(tdlist[i]);
+
+            if (td.text() == '行为') {
+                var elements = td.parent().children().last();
+                elements.contents().each(function() {
+                    // console.log(this.textContent);
+                    if (isFoundReviewLink) {
+                        $(this).before(' | <a href="javascript:;" id="approvelink" class="small"><b><font><svg t="1655224943277" class="icon" viewBox="0 0 1397 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="45530" width="16" height="16"><path d="M1396.363636 121.018182c0 0-223.418182 74.472727-484.072727 372.363636-242.036364 269.963636-297.890909 381.672727-390.981818 530.618182C512 1014.690909 372.363636 744.727273 0 549.236364l195.490909-186.181818c0 0 176.872727 121.018182 297.890909 344.436364 0 0 307.2-474.763636 902.981818-707.490909L1396.363636 121.018182 1396.363636 121.018182zM1396.363636 121.018182" p-id="45531" fill="#8BC34A"></path></svg><svg t="1655224943277" class="icon" viewBox="0 0 1397 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="45530" width="16" height="16"><path d="M1396.363636 121.018182c0 0-223.418182 74.472727-484.072727 372.363636-242.036364 269.963636-297.890909 381.672727-390.981818 530.618182C512 1014.690909 372.363636 744.727273 0 549.236364l195.490909-186.181818c0 0 176.872727 121.018182 297.890909 344.436364 0 0 307.2-474.763636 902.981818-707.490909L1396.363636 121.018182 1396.363636 121.018182zM1396.363636 121.018182" p-id="45531" fill="#8BC34A"></path></svg>&nbsp;一键通过</font></b></a>'); // Add new hyperlink and separator
+                        var actionLink = document.querySelector('#approvelink');
+                        actionLink.style.fontSize = fontsize;
+                        actionLink.addEventListener('click', function(event) {
+                            event.preventDefault(); // 阻止超链接的默认行为
+                            // 设置标记以供新页面使用
+                            GM_setValue('autoCheckAndConfirm', true);
+                            // 找到并点击指定按钮
+                            var specifiedButton = document.querySelector('#approval'); // 替换为实际的按钮选择器
+                            if (specifiedButton) {
+                                specifiedButton.click();
+                            }
+                        });
+                        return false; // Exit the loop
+                    }
+
+                    if (this.textContent.includes('审核')) { // Check for text nodes containing the separator
+                        console.log("找到审核按钮");
+                        isFoundReviewLink = true;
+                    }
+                });
+            }
+        }
+    }
+
+//     $('#assistant-tooltips').click(function(){
+//         if (error && isFoundReviewLink) {
+//             GM_setValue('autoFillErrorInfo', true);
+//             // console.log("errorinfo_before:"+$("#approval-comment").html());
+//             GM_setValue('errorInfo', document.getElementById('assistant-tooltips').innerHTML);
+//             // 找到并点击指定按钮
+//             var specifiedButton = document.querySelector('#approval'); // 替换为实际的按钮选择器
+//             if (specifiedButton) {
+//                 specifiedButton.click();
+//             }
+//         } else {
+//             console.log("当前种子无错误或非种审人员，点击无效");
+//         }
+//     });
+
+    // 主页面操作
+    if (/https:\/\/.*\.agsvpt\.com\/details\.php\?id=.*/.test(window.location.href)) {
+        addApproveLink();
+        if (biggerbutton) {
+            if (!error){
+                console.log("此种子未检测到错误");
+                document.querySelector('#approvelink').style.fontSize = biggerbuttonsize;
+            } else{
+                document.querySelector('#approval').style.fontSize = biggerbuttonsize;
+            }
+        }
+    }
+
+    // 弹出页的操作
+    if (/https:\/\/.*\.agsvpt\.com\/web\/torrent-approval-page\?torrent_id=.*/.test(window.location.href)) {
+        // 使用延迟来等待页面可能的异步加载
+        setTimeout(function() {
+            if (GM_getValue('autoFillErrorInfo', false)) {
+                var radioDenyButton = document.querySelector("body > div.form-comments > form > div:nth-child(3) > div > div:nth-child(6)").click();
+                if (radioDenyButton) {
+                    radioDenyButton.checked = true;
+                }
+                var errorInfo = GM_getValue('errorInfo', "");
+                console.log("errorInfo: "+errorInfo);
+                errorInfo = errorInfo.replace("MediaInfo中含有bbcode", "请将MediaInfo中多余的标签删除，例如：[b][color=royalblue]******[/color][/b]");
+                console.log("errorInfo: "+errorInfo);
+                $("#approval-comment").text(errorInfo);
+
+                // 完成操作后，清除标记
+                // GM_setValue('autoFillErrorInfo', false);
+                // GM_setValue('errorInfo', "");
+            }else if (GM_getValue('autoCheckAndConfirm', false)) {
+                var radioPassButton = document.querySelector("body > div.form-comments > form > div:nth-child(3) > div > div:nth-child(4) > div").click();
+                if (radioPassButton) {
+                    radioPassButton.checked = true;
+                }
+
+                var confirmButton = document.querySelector("body > div.form-comments > form > div:nth-child(5) > div > button:nth-child(1)");
+                if (confirmButton) {
+                    confirmButton.click();
+                }
+
+                // 完成操作后，清除标记
+                GM_setValue('autoCheckAndConfirm', false);
+            }
+        }, timeout); // 可能需要根据实际情况调整延迟时间
+    }
+
     // 种子存在错误便设置变量
     if (error && isFoundReviewLink) {
         GM_setValue('autoFillErrorInfo', true);
-        // console.log("errorinfo_before:"+$("#approval-comment").html());
         GM_setValue('errorInfo', document.getElementById('assistant-tooltips').innerHTML);
-        //console.log("GM_getValue:"+GM_getValue('errorInfo'));
     } else if (!error) {
         GM_setValue('autoFillErrorInfo', false);
         // GM_setValue('errorInfo', "");
     }
 
-    var douban_area, douban_cat;
-    if (douban) {
-        GM_xmlhttpRequest({
-            method: 'GET',
-            url: 'https://movie.douban.com/subject/' + douban + '/',
-            headers: {"Content-Type": "application/x-www-form-urlencoded"},
-            onload: function(response) {
-                var html = $.parseHTML(response.responseText);
 
-                var isshow, isdoc, isani;
-                var douban_genres = $(html).find('#info span[property="v:genre"]');
-                if (douban_genres) {
-                    $(douban_genres).each(function(index, element) {
-                        if ($(element).text() == '真人秀') {
-                            isshow = 1;
-                        }
-                        if ($(element).text() == '纪录片') {
-                            isdoc = 1;
-                        }
-                        if ($(element).text() == '动画') {
-                            isani = 1;
-                        }
-                    })
-                }
-
-                var type = null;
-                var comm_condition = $(html).find('div span.rec a').eq(0);
-                if (comm_condition) {
-                    type = $(comm_condition).attr('data-type');
-                }
-
-                var res = $(html).find('#info').contents()
-                    .filter(function() {
-                        return this.nodeType == 3;
-                    }).text();
-
-                var result = [];
-                var array = res.split('\n');
-                for (var i = 0; i < array.length; i++) {
-                    if (array[i] != '') {
-                        var subarray = array[i].split('/');
-                        var subresult = [];
-                        for (var j = 0; j < subarray.length; j++) {
-                            if (subarray[j].trim() != '') {
-                                subresult.push(subarray[j].trim());
-                            }
-                        }
-                        if (subresult.length > 0) {
-                            result.push(subresult);
-                        }
-                    }
-                }
-
-                var country = result[0][0];
-                console.log('country ' + country);
-
-                // 地区判定
-
-                if (country == '中国大陆') {
-                    douban_area = 1;
-                } else if (country == '中国香港') {
-                    douban_area = 2;
-                } else if (country == '中国台湾') {
-                    douban_area = 3;
-                } else if (country == '印度') {
-                    douban_area = 7;
-                }  else if (country == '日本') {
-                    douban_area = 5;
-                } else if (country == '韩国') {
-                    douban_area = 6;
-                } else if (country == '泰国') {
-                    douban_area = 9;
-                } else if (country == '美国' || country == '英国' || country == '法国' || country == '德国' || country == '西德' || country == '波兰' || country == '意大利' || country == '西班牙'
-                           || country == '加拿大' || country == '爱尔兰' || country == '瑞典' || country == '巴西' || country == '丹麦' || country == '奥地利') {
-                    douban_area = 4;
-                } else if (country == '苏联' || country == '俄罗斯') {
-                    douban_area = 8;
-                } else {
-                    douban_area = 99;
-                }
-
-                if (type == '电视剧') {
-                    if (isshow) {
-                        douban_cat = 505;
-                    } else if (isdoc) {
-                        douban_cat = 503;
-                    } else if (isani) {
-                        douban_cat = 504;
-                    } else {
-                        douban_cat = 502;
-                    }
-                } else {
-                    if (isdoc) {
-                        douban_cat = 503;
-                    } else if (isani) {
-                        douban_cat = 504;
-                    } else {
-                        douban_cat = 501;
-                    }
-                }
-
-                if (cat && douban_cat && douban_cat >= 501 && douban_cat <= 505 && douban_cat !== cat) {
-                    $('#assistant-tooltips').append("豆瓣检测分类为" + cat_constant[douban_cat] + "，选择分类为" + cat_constant[cat] + '<br/>');
-                    error = true;
-                }
-
-                if (area && douban_area && douban_area !== area) {
-                    $('#assistant-tooltips').append("豆瓣检测地区为" + area_constant[douban_area] + "，选择地区为" + area_constant[area] + '<br/>');
-                    error = true;
-                }
-
-                if (error) {
-                    $('#assistant-tooltips').css('background', 'red');
-                } else {
-                    $('#assistant-tooltips').append('此种子未检测到错误');
-                    $('#assistant-tooltips').css('background', 'green');
-                }
-            }
-        });
+    if (error) {
+        $('#assistant-tooltips').css('background', '#EA2027');
     } else {
-        if (error) {
-            $('#assistant-tooltips').css('background', '#EA2027');
-        } else {
-            $('#assistant-tooltips').append('此种子未检测到错误');
-            $('#assistant-tooltips').css('background', '#8BC34A');
-        }
-        if (!warning) {
-            $('#assistant-tooltips-warning').hide();
-        }
-        // $('#assistant-tooltips-warning').hide();
-        console.log("warning:"+warning);
+        $('#assistant-tooltips').append('此种子未检测到错误');
+        $('#assistant-tooltips').css('background', '#8BC34A');
     }
+    if (!warning) {
+        $('#assistant-tooltips-warning').hide();
+    }
+    // $('#assistant-tooltips-warning').hide();
+    // console.log("warning:"+warning);
+
 
 
 })();
