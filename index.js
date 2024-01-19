@@ -1,16 +1,19 @@
 // ==UserScript==
-// @name         Agsv-Torrent-Assistant
+// @name         Agsv-Torrent-Assistant-Demo
 // @namespace    http://tampermonkey.net/
-// @version      0.3.7
+// @version      0.4.4
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
+// @match        *://*.agsvpt.com/web/torrent-approval-page?torrent_id=*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=agsvpt.com
 // @require      https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js
+// @grant        GM_setValue
+// @grant        GM_getValue
 // @grant        GM_xmlhttpRequest
 // @license      MIT
-// @downloadURL https://update.greasyfork.org/scripts/482900/Agsv-Torrent-Assistant.user.js
-// @updateURL https://update.greasyfork.org/scripts/482900/Agsv-Torrent-Assistant.meta.js
+// @downloadURL https://update.greasyfork.org/scripts/485197/Agsv-Torrent-Assistant-Demo.user.js
+// @updateURL https://update.greasyfork.org/scripts/485197/Agsv-Torrent-Assistant-Demo.meta.js
 // ==/UserScript==
 
 /*
@@ -20,7 +23,12 @@
 (function() {
     'use strict';
 
-    var review_info_position = 2; // 1:页面最上方，2:主标题正下方，3:主标题正上方
+    // 自定义参数
+    var review_info_position = 2;  // 错误提示信息位置：1:页面最上方，2:主标题正下方，3:主标题正上方
+    var fontsize = "9pt";          // 一键通过按钮的字体大小
+    var timeout = 200;             // 弹出页内鼠标点击间隔，单位毫秒，设置越小点击越快，但是对网络要求更高
+    var biggerbutton = 0;          // 是否将按钮放大
+    var biggerbuttonsize = "30pt"; // 放大的按钮大小
 
     var cat_constant = {
         401: 'Movie(电影)',
@@ -118,8 +126,7 @@
     }
 
     var isBriefContainsInfo = false;  //是否包含Mediainfo
-    // 英文详细info
-    if (brief.includes("general") && brief.includes("video") && brief.includes("audio")) {
+    if (brief.includes("video") && brief.includes("audio")) {
         isBriefContainsInfo = true;
         // console.log("简介中包含Mediainfo");
     }
@@ -137,6 +144,9 @@
     }
     // frds官种
     if (brief.includes("release date") && brief.includes("source")) {
+        isBriefContainsInfo = true;
+    }
+    if (brief.includes("release.name") || brief.includes("release.size")) {
         isBriefContainsInfo = true;
     }
 
@@ -208,6 +218,14 @@
         title_audio = 6;
     } else if (title_lowercase.includes("ac3")) {
         title_audio = 11;
+    } else if (title_lowercase.includes("truehd") && title_lowercase.includes("atmos")) {
+        title_audio = 17;
+    } else if (title_lowercase.includes("dts-hd ma")) {
+        title_audio = 8;
+    } else if (title_lowercase.includes("dts:x") || title_lowercase.includes("dts-x") || title_lowercase.includes("dts: x")) {
+        title_audio = 18;
+    } else if (title_lowercase.includes("dts")) {
+        title_audio = 3;
     }
 
     // 分辨率
@@ -349,8 +367,12 @@
             // 音频编码
             if (text.indexOf('DTS-HD MA') >= 0) {
                 audio = 8;
+            } else if (text.indexOf('DTS:X') >= 0) {
+                audio = 18;
             } else if (text.indexOf('DTS') >= 0) {
                 audio = 3;
+            } else if (text.indexOf('TrueHD Atmos') >= 0) {
+                audio = 17;
             } else if (text.indexOf('TrueHD') >= 0) {
                 audio = 9;
             } else if (text.indexOf('LPCM') >= 0) {
@@ -369,10 +391,6 @@
                 audio = 4;
             } else if (text.indexOf('M4A') >= 0) {
                 audio = 16;
-            } else if (text.indexOf('DTS:X') >= 0) {
-                audio = 18;
-            } else if (text.indexOf('TrueHD Atmos') >= 0) {
-                audio = 17;
             } else if (text.indexOf('DDP/E-AC3') >= 0) {
                 audio = 19;
             } else if (text.indexOf('音频编码: Other') >= 0) {
@@ -526,6 +544,103 @@
             $('#top').after('<div style="display: inline-block; padding: 10px 30px; color: white; background: #F44336; font-weight: bold; border-radius: 5px; margin: 0px"; display: block; position: fixed;bottom: 0;right: 0;box-shadow: 0 0 10px rgba(0,0,0,0.5); id="assistant-tooltips"></div><br><div style="display: inline-block; padding: 10px 30px; color: black; background: #ffdd59; font-weight: bold; border-radius: 5px; margin: 4px"; display: block; position: fixed;bottom: 0;right: 0;box-shadow: 0 0 10px rgba(0,0,0,0.5); id="assistant-tooltips-warning"></div><br>');
     }
 
+    var isFoundReviewLink = false; // 是否有审核按钮（仅有权限人员可一键填入错误信息）
+    // 添加一键通过按钮到页面
+    function addApproveLink() {
+        var tdlist = $('#outer').find('td');
+        var text;
+        for (var i = 0; i < tdlist.length; i ++) {
+            var td = $(tdlist[i]);
+
+            if (td.text() == '行为') {
+                var elements = td.parent().children().last();
+                elements.contents().each(function() {
+                    // console.log(this.textContent);
+                    if (isFoundReviewLink) {
+                        $(this).before(' | <a href="javascript:;" id="approvelink" class="small"><b><font><svg t="1655224943277" class="icon" viewBox="0 0 1397 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="45530" width="16" height="16"><path d="M1396.363636 121.018182c0 0-223.418182 74.472727-484.072727 372.363636-242.036364 269.963636-297.890909 381.672727-390.981818 530.618182C512 1014.690909 372.363636 744.727273 0 549.236364l195.490909-186.181818c0 0 176.872727 121.018182 297.890909 344.436364 0 0 307.2-474.763636 902.981818-707.490909L1396.363636 121.018182 1396.363636 121.018182zM1396.363636 121.018182" p-id="45531" fill="#8BC34A"></path></svg><svg t="1655224943277" class="icon" viewBox="0 0 1397 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="45530" width="16" height="16"><path d="M1396.363636 121.018182c0 0-223.418182 74.472727-484.072727 372.363636-242.036364 269.963636-297.890909 381.672727-390.981818 530.618182C512 1014.690909 372.363636 744.727273 0 549.236364l195.490909-186.181818c0 0 176.872727 121.018182 297.890909 344.436364 0 0 307.2-474.763636 902.981818-707.490909L1396.363636 121.018182 1396.363636 121.018182zM1396.363636 121.018182" p-id="45531" fill="#8BC34A"></path></svg>&nbsp;一键通过</font></b></a>'); // Add new hyperlink and separator
+                        var actionLink = document.querySelector('#approvelink');
+                        actionLink.style.fontSize = fontsize;
+                        actionLink.addEventListener('click', function(event) {
+                            event.preventDefault(); // 阻止超链接的默认行为
+                            // 设置标记以供新页面使用
+                            GM_setValue('autoCheckAndConfirm', true);
+                            // 找到并点击指定按钮
+                            var specifiedButton = document.querySelector('#approval'); // 替换为实际的按钮选择器
+                            if (specifiedButton) {
+                                specifiedButton.click();
+                            }
+                        });
+                        return false; // Exit the loop
+                    }
+
+                    if (this.textContent.includes('审核')) { // Check for text nodes containing the separator
+                        console.log("找到审核按钮");
+                        isFoundReviewLink = true;
+                    }
+                });
+            }
+        }
+    }
+
+    $('#assistant-tooltips').click(function(){
+        if (error && isFoundReviewLink) {
+            GM_setValue('autoFillErrorInfo', true);
+            // console.log("errorinfo_before:"+$("#approval-comment").html());
+            GM_setValue('errorInfo', document.getElementById('assistant-tooltips').innerHTML);
+            // 找到并点击指定按钮
+            var specifiedButton = document.querySelector('#approval'); // 替换为实际的按钮选择器
+            if (specifiedButton) {
+                specifiedButton.click();
+            }
+        } else {
+            console.log("当前种子无错误或非种审人员，点击无效");
+        }
+    });
+
+    // 主页面操作
+    if (/https:\/\/.*\.agsvpt\.com\/details\.php\?id=.*/.test(window.location.href)) {
+        addApproveLink();
+        if (biggerbutton) {
+            if ($('#assistant-tooltips').text() === "此种子未检测到错误"){
+                console.log("此种子未检测到错误");
+                document.querySelector('#approval').style.fontSize = biggerbuttonsize;
+            } else{
+                document.querySelector('#approvelink').style.fontSize = biggerbuttonsize;
+            }
+        }
+    }
+
+    // 弹出页的操作
+    if (/https:\/\/.*\.agsvpt\.com\/web\/torrent-approval-page\?torrent_id=.*/.test(window.location.href)) {
+        // 使用延迟来等待页面可能的异步加载
+        setTimeout(function() {
+            if (GM_getValue('autoFillErrorInfo', false)) {
+                var radioDenyButton = document.querySelector("body > div.form-comments > form > div:nth-child(3) > div > div:nth-child(6)").click();
+                if (radioDenyButton) {
+                    radioDenyButton.checked = true;
+                }
+
+                $("#approval-comment").text(GM_getValue('errorInfo', ""));
+
+                // 完成操作后，清除标记
+                GM_setValue('autoFillErrorInfo', false);
+            }else if (GM_getValue('autoCheckAndConfirm', false)) {
+                var radioPassButton = document.querySelector("body > div.form-comments > form > div:nth-child(3) > div > div:nth-child(4) > div").click();
+                if (radioPassButton) {
+                    radioPassButton.checked = true;
+                }
+
+                var confirmButton = document.querySelector("body > div.form-comments > form > div:nth-child(5) > div > button:nth-child(1)");
+                if (confirmButton) {
+                    confirmButton.click();
+                }
+
+                // 完成操作后，清除标记
+                GM_setValue('autoCheckAndConfirm', false);
+            }
+        }, timeout); // 可能需要根据实际情况调整延迟时间
+    }
+
     /* if (/\s+/.test(title)) {
         $('#assistant-tooltips').append('主标题包含空格<br/>');
         error = true;
@@ -568,8 +683,10 @@
     } else {
         if (title_audio && title_audio !== audio) {
             console.log("标题检测音频编码为" + audio_constant[title_audio] + "，选择音频编码为" + audio_constant[audio]);
-            $('#assistant-tooltips-warning').append("标题检测音频编码为" + audio_constant[title_audio] + "，选择音频编码为" + audio_constant[audio] + '<br/>');
-            warning = true;
+            // $('#assistant-tooltips-warning').append("标题检测音频编码为" + audio_constant[title_audio] + "，选择音频编码为" + audio_constant[audio] + '<br/>');
+            // warning = true;
+            $('#assistant-tooltips').append("标题检测音频编码为" + audio_constant[title_audio] + "，选择音频编码为" + audio_constant[audio] + '<br/>');
+            error = true;
         }
     }
     if (!resolution) {
@@ -641,6 +758,11 @@
             $('#assistant-tooltips').append('未选择制作组<br/>');
             error = true;
         }
+    }
+
+    if (cat === 413 || cat === 418 || cat === 415 || cat === 412 || cat === 411) {
+        $('#assistant-tooltips').empty();
+        error = false;
     }
 
     var douban_area, douban_cat;
