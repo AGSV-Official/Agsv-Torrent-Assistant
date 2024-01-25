@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.5.8
+// @version      0.6.0
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
@@ -17,7 +17,7 @@
 // ==/UserScript==
 
 /*
- * 改自SpringSunday-Torrent-Assistant 
+ * 改自SpringSunday-Torrent-Assistant
  */
 
 (function() {
@@ -254,6 +254,9 @@
     var isOfficialSeedLabel = false; //是否选择了官种标签
     var isMediainfoEmpty = false;    //Mediainfo栏内容是否为空
     var isEpisode = false;           //电视剧是否为分集
+    var isTagAudioChinese = false;   //标签是否选择国语
+    var isTagTextChinese = false;    //标签是否选择中字
+    var isTagTextEnglish = false;    //标签是否选择英字
 
     var tdlist = $('#outer').find('td');
     for (var i = 0; i < tdlist.length; i ++) {
@@ -282,6 +285,18 @@
             }
             if(text.includes("分集")){
                 isEpisode = true;
+                // console.log("已选择官方标签");
+            }
+            if(text.includes("国语")){
+                isTagAudioChinese = true;
+                // console.log("已选择官方标签");
+            }
+            if(text.includes("中字")){
+                isTagTextChinese = true;
+                // console.log("已选择官方标签");
+            }
+            if(text.includes("英字")){
+                isTagTextEnglish = true;
                 // console.log("已选择官方标签");
             }
         }
@@ -502,6 +517,30 @@
         }
     }
 
+    // 根据 Mediainfo 判断标签选择
+    var isAudioChinese = false;
+    var isTextChinese = false;
+    var isTextEnglish = false;
+    // console.log("===========================mediainfo:"+mediainfo);
+    const audioLanguage = mediainfo.match(/Audio.*?Language:(\w+)/)[1];
+    // console.log(`The language of the audio is: ${audioLanguage}`);
+    if (audioLanguage.includes("Chinese")){
+        isAudioChinese = true;
+    }
+
+    const textLanguages = mediainfo.match(/Text.*?Language:(\w+)/g).map(text => text.match(/Language:(\w+)/)[1]);
+    var textLanguage = textLanguages.join(',')
+    // console.log(`The languages of the text are: ${textLanguage}`);
+    if (textLanguage.includes("Chinese")){
+        isTextChinese = true;
+    }
+    if (textLanguage.includes("English")){
+        isTextEnglish = true;
+    }
+    // alert(isAudioChinese.toString() + isTextChinese.toString() + isTextEnglish.toString());
+
+
+
     function containsBBCode(str) {
         // 创建一个正则表达式来匹配 [/b]、[/color] 等结束标签
         const regex = /\[\/(b|color|i|u|img)\]/;
@@ -658,6 +697,19 @@
 
     if (isBriefContainsInfo) {
         $('#assistant-tooltips').append('简介中包含Mediainfo<br/>');
+        error = true;
+    }
+
+    if(isAudioChinese && !isTagAudioChinese) {
+        $('#assistant-tooltips').append('未选择国语标签<br/>');
+        error = true;
+    }
+    if(isTextChinese && !isTagTextChinese) {
+        $('#assistant-tooltips').append('未选择中字标签<br/>');
+        error = true;
+    }
+    if(isTextEnglish && !isTagTextEnglish) {
+        $('#assistant-tooltips').append('未选择英字标签<br/>');
         error = true;
     }
 
