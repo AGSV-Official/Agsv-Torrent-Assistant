@@ -1,3 +1,5 @@
-### 改自SpringSunday-Torrent-Assistant
+# Agsv种审助手
 
-###  https://greasyfork.org/zh-CN/scripts/448012-springsunday-torrent-assistant
+### Greasy Fork安装地址
+
+https://greasyfork.org/zh-CN/scripts/482900-agsv-torrent-assistant
