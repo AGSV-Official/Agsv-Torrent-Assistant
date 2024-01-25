@@ -17,7 +17,7 @@
 // ==/UserScript==
 
 /*
- * 改自SpringSunday-Torrent-Assistant https://greasyfork.org/zh-CN/scripts/448012-springsunday-torrent-assistant
+ * 改自SpringSunday-Torrent-Assistant 
  */
 
 (function() {
