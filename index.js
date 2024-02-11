@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.6.0
+// @version      0.6.8
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
@@ -27,8 +27,8 @@
     var review_info_position = 2;  // 错误提示信息位置：1:页面最上方，2:主标题正下方，3:主标题正上方
     var fontsize = "9pt";          // 一键通过按钮的字体大小
     var timeout = 200;             // 弹出页内鼠标点击间隔，单位毫秒，设置越小点击越快，但是对网络要求更高
-    var biggerbutton = 0;          // 是否将按钮放大
-    var biggerbuttonsize = "90pt"; // 放大的按钮大小
+    var biggerbutton = 1;          // 是否将按钮放大
+    var biggerbuttonsize = "40pt"; // 放大的按钮大小
 
     var cat_constant = {
         401: 'Movie(电影)',
@@ -149,6 +149,10 @@
     if (brief.includes("release.name") || brief.includes("release.size")) {
         isBriefContainsInfo = true;
     }
+    // CMCT/HDCTV官种
+    if ((brief.includes("文件名") || brief.includes("文件名称")) && (brief.includes("体　积")||brief.includes("体　　积"))) {
+        isBriefContainsInfo = true;
+    }
 
     var title = $('#top').text();
     var exclusive = 0;
@@ -241,7 +245,7 @@
         title_resolution = 6;
     }
 
-    if (title_lowercase.match(/s\d+e\d+/i)) {
+    if (title_lowercase.match(/s\d+e\d+/i) || title_lowercase.match(/ep\d+/i)) {
         title_is_episode = true;
         // console.log("===============================当前为分集");
     }
@@ -257,6 +261,9 @@
     var isTagAudioChinese = false;   //标签是否选择国语
     var isTagTextChinese = false;    //标签是否选择中字
     var isTagTextEnglish = false;    //标签是否选择英字
+    var isAudioChinese = false;
+    var isTextChinese = false;
+    var isTextEnglish = false;
 
     var tdlist = $('#outer').find('td');
     for (var i = 0; i < tdlist.length; i ++) {
@@ -351,8 +358,8 @@
             // console.log("cat:"+cat);
 
             // 格式
-            if (text.indexOf('Blu-ray') >= 0) {
-                type = 1;
+            if (text.indexOf('UHD Blu-ray') >= 0) {
+                type = 11;
             } else if (text.indexOf('DVD') >= 0) {
                 type = 2;
             } else if (text.indexOf('Remux') >= 0) {
@@ -365,8 +372,8 @@
                 type = 8;
             } else if (text.indexOf('WEB-DL') >= 0) {
                 type = 10;
-            } else if (text.indexOf('UHD Blu-ray') >= 0) {
-                type = 11;
+            } else if (text.indexOf('Blu-ray') >= 0) {
+                type = 1;
             } else if (text.indexOf('Track') >= 0) {
                 type = 12;
             } else if (text.indexOf('媒介: Other') >= 0) {
@@ -514,32 +521,32 @@
             if ((containsBBCode(mediainfo) || containsBBCode(mediainfo_short)) && mediainfo_short === mediainfo){
                 mediainfo_err = "MediaInfo中含有bbcode"
             }
+
+            // 根据 Mediainfo 判断标签选择
+            // console.log("===========================mediainfo:"+mediainfo);
+            const audioMatch = mediainfo.match(/Audio.*?Language:(\w+)/);
+            const audioLanguage = audioMatch ? audioMatch[1] : 'Not found';
+            // console.log(`The language of the audio is: ${audioLanguage}`);
+            if (audioLanguage.includes("Chinese") || audioLanguage.includes("Mandarin")){
+                isAudioChinese = true;
+            }
+
+            const textMatches = mediainfo.match(/Text.*?Language:(\w+)/g) || [];
+            const textLanguages = textMatches.map(text => {
+                const match = text.match(/Language:(\w+)/);
+                return match ? match[1] : 'Not found';
+            });
+            var textLanguage = textLanguages.join(',')
+            // console.log(`The languages of the text are: ${textLanguage}`);
+            if (textLanguage.includes("Chinese")){
+                isTextChinese = true;
+            }
+            if (textLanguage.includes("English")){
+                isTextEnglish = true;
+            }
+            // alert(isAudioChinese.toString() + isTextChinese.toString() + isTextEnglish.toString());
         }
     }
-
-    // 根据 Mediainfo 判断标签选择
-    var isAudioChinese = false;
-    var isTextChinese = false;
-    var isTextEnglish = false;
-    // console.log("===========================mediainfo:"+mediainfo);
-    const audioLanguage = mediainfo.match(/Audio.*?Language:(\w+)/)[1];
-    // console.log(`The language of the audio is: ${audioLanguage}`);
-    if (audioLanguage.includes("Chinese")){
-        isAudioChinese = true;
-    }
-
-    const textLanguages = mediainfo.match(/Text.*?Language:(\w+)/g).map(text => text.match(/Language:(\w+)/)[1]);
-    var textLanguage = textLanguages.join(',')
-    // console.log(`The languages of the text are: ${textLanguage}`);
-    if (textLanguage.includes("Chinese")){
-        isTextChinese = true;
-    }
-    if (textLanguage.includes("English")){
-        isTextEnglish = true;
-    }
-    // alert(isAudioChinese.toString() + isTextChinese.toString() + isTextEnglish.toString());
-
-
 
     function containsBBCode(str) {
         // 创建一个正则表达式来匹配 [/b]、[/color] 等结束标签
@@ -700,10 +707,10 @@
         error = true;
     }
 
-    if(isAudioChinese && !isTagAudioChinese) {
-        $('#assistant-tooltips').append('未选择国语标签<br/>');
-        error = true;
-    }
+//     if(isAudioChinese && !isTagAudioChinese) {
+//         $('#assistant-tooltips').append('未选择国语标签<br/>');
+//         error = true;
+//     }
     if(isTextChinese && !isTagTextChinese) {
         $('#assistant-tooltips').append('未选择中字标签<br/>');
         error = true;
@@ -738,6 +745,16 @@
     if (cat === 413 || cat === 418 || cat === 415 || cat === 412 || cat === 411) {
         $('#assistant-tooltips').empty();
         error = false;
+    }
+
+    if(cat === 411 && !title_lowercase.includes("khz")) {
+        $('#assistant-tooltips').append('主标题缺少采样频率<br/>');
+        error = true;
+    }
+
+    if(cat === 411 && !title_lowercase.includes("bit")) {
+        $('#assistant-tooltips').append('主标题缺少比特率<br/>');
+        error = true;
     }
 
     var isFoundReviewLink = false; // 是否有审核按钮（仅有权限人员可一键填入错误信息）
@@ -883,6 +900,9 @@
         GM_setValue('autoFillErrorInfo', false);
         // GM_setValue('errorInfo', "");
     }
+
+    //console.log("============================error:"+error+"isFoundReviewLink:"+isFoundReviewLink);
+    //console.log("============================autoFillErrorInfo:"+GM_getValue('autoFillErrorInfo')+"errorInfo:"+GM_getValue('errorInfo'));
 
 
     if (error) {
