@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.6.8
+// @version      0.7.4
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
@@ -126,7 +126,7 @@
     }
 
     var isBriefContainsInfo = false;  //是否包含Mediainfo
-    if (brief.includes("video") && brief.includes("audio")) {
+    if (brief.includes("general") && brief.includes("video") && brief.includes("audio")) {
         isBriefContainsInfo = true;
         // console.log("简介中包含Mediainfo");
     }
@@ -163,24 +163,24 @@
     title = title.replace(/剩余时间.*/g,'').trim();
     title = title.replace("(禁止)",'').trim();
     // console.log(title);
+    var title_lowercase = title.toLowerCase();
 
     var officialSeed = 0; //官组种子
     var godDramaSeed = 0; //驻站短剧组种子
     var officialMusicSeed = 0; //官组音乐种子
-    if(title.includes("AGSV") || title.includes("AGSVPT") || title.includes("AGSVWEB") || title.includes("AGSVMUS")) {
+    if(title_lowercase.includes("agsv")) {
         officialSeed = 1;
         //console.log("官种");
     }
-    if(title.includes("GodDramas")) {
+    if(title_lowercase.includes("goddramas")) {
         godDramaSeed = 1;
         //console.log("短剧种");
     }
-    if(title.includes("AGSVMUS")) {
+    if(title_lowercase.includes("agsvmus")) {
         officialMusicSeed = 1;
         //console.log("音乐官种");
     }
 
-    var title_lowercase = title.toLowerCase();
     // console.log("title_lowercase:"+title_lowercase);
     var title_type, title_encode, title_audio, title_resolution, title_group, title_is_complete, title_is_episode;
 
@@ -256,11 +256,13 @@
     var isGroupSelected = false;     //是否选择了制作组
     var isReseedProhibited = false;  //是否选择了禁转标签
     var isOfficialSeedLabel = false; //是否选择了官种标签
+    var isIceSeedLabel = false;      //是否选择了官种标签
     var isMediainfoEmpty = false;    //Mediainfo栏内容是否为空
     var isEpisode = false;           //电视剧是否为分集
     var isTagAudioChinese = false;   //标签是否选择国语
     var isTagTextChinese = false;    //标签是否选择中字
     var isTagTextEnglish = false;    //标签是否选择英字
+    var isTagResident = false;       //标签是否选择驻站
     var isAudioChinese = false;
     var isTextChinese = false;
     var isTextEnglish = false;
@@ -289,6 +291,14 @@
             if(text.includes("官方")){
                 isOfficialSeedLabel = true;
                 // console.log("已选择官方标签");
+            }
+            if(text.includes("冰种")){
+                isIceSeedLabel = true;
+                // console.log("已选择冰种标签");
+            }
+            if(text.includes("驻站")){
+                isTagResident = true;
+                // console.log("已选择驻站标签");
             }
             if(text.includes("分集")){
                 isEpisode = true;
@@ -604,7 +614,7 @@
         $('#assistant-tooltips').append('主标题包含空格<br/>');
         error = true;
     } */
-    if(/[^\x00-\xff]+/g.test(title) && !title.includes('￡')) {
+    if(/[^\x00-\xff]+/g.test(title) && !title.includes('￡') && !title.includes('™')) {
         $('#assistant-tooltips').append('主标题包含中文或中文字符<br/>');
         error = true;
     }
@@ -658,6 +668,11 @@
         }
     }
 
+    if ((resolution === 8 ||resolution === 4 || title_resolution === 4) && !(godDramaSeed || officialSeed)){
+         $('#assistant-tooltips-warning').append("请检查是否有更高清的资源");
+         warning = true;
+    }
+
     if (!dbUrl && !godDramaSeed) {
         $('#assistant-tooltips').append('未检测到IMDb或豆瓣链接<br/>');
         error = true;
@@ -692,8 +707,23 @@
         error = true;
     }
 
+    if (godDramaSeed && !isTagResident) {
+        $('#assistant-tooltips').append('未选择驻站标签<br/>');
+        error = true;
+    }
+
     if (!officialSeed && isOfficialSeedLabel) {
         $('#assistant-tooltips').append('非官种不可选择官方标签<br/>');
+        error = true;
+    }
+
+    if (officialSeed && !isOfficialSeedLabel) {
+        $('#assistant-tooltips').append('官种未选择官方标签<br/>');
+        error = true;
+    }
+
+    if ((officialSeed || godDramaSeed) && !isIceSeedLabel) {
+        $('#assistant-tooltips').append('未选择冰种标签<br/>');
         error = true;
     }
 
@@ -842,10 +872,10 @@
         //console.log("autoFillErrorInfo:"+GM_getValue('autoFillErrorInfo'));
         //console.log("autoCheckAndConfirm:"+GM_getValue('autoCheckAndConfirm'));
         if (biggerbutton) {
-            if (!error){
+            if (!error && isFoundReviewLink){
                 // console.log("此种子未检测到错误");
                 document.querySelector('#approvelink').style.fontSize = biggerbuttonsize;
-            } else{
+            } else if ((error && isFoundReviewLink)){
                 document.querySelector('#approval').style.fontSize = biggerbuttonsize;
             }
         }
@@ -891,6 +921,14 @@
             }
         }, timeout); // 可能需要根据实际情况调整延迟时间
     }
+
+    // 快捷键 ctrl+e 一键通过
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'F4') {
+            let button = document.querySelector('#approvelink');
+            button.click();
+        }
+    });
 
     // 种子存在错误便设置变量
     if (error && isFoundReviewLink) {
