@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      0.7.4
+// @version      1.0.3
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
@@ -29,6 +29,8 @@
     var timeout = 200;             // 弹出页内鼠标点击间隔，单位毫秒，设置越小点击越快，但是对网络要求更高
     var biggerbutton = 1;          // 是否将按钮放大
     var biggerbuttonsize = "40pt"; // 放大的按钮大小
+    var autoclose = 1;             // 一键通过后自动关闭页面
+    var autoback = 0;              // 一键通过后返回上一页面
 
     var cat_constant = {
         401: 'Movie(电影)',
@@ -112,12 +114,13 @@
 
     }
 
-    const brief = $("#kdescr").text().toLowerCase(); // 获取元素的文本内容
-    const containsIMDbLink = brief.includes("imdb.com"); // 检查内容是否包含 imdb.com 链接
-    const containsDoubanLink = brief.includes("douban.com"); // 检查内容是否包含 douban.com 链接
+    const brief = $("#kdescr").text().toLowerCase();           // 获取元素的文本内容
+    const containsIMDbLink = brief.includes("imdb.com");       // 检查内容是否包含 imdb.com 链接
+    const containsDoubanLink = brief.includes("douban.com");   // 检查内容是否包含 douban.com 链接
+    const containsTMDBLink = brief.includes("themoviedb.org"); // 检查内容是否包含 themoviedb.org 链接
 
     var dbUrl; // 是否包含影片链接
-    if (containsIMDbLink || containsDoubanLink) {
+    if (containsIMDbLink || containsDoubanLink || containsTMDBLink) {
         dbUrl = true;
         // console.log("内容中包含 IMDb 或 Douban 链接");
     } else {
@@ -153,6 +156,10 @@
     if ((brief.includes("文件名") || brief.includes("文件名称")) && (brief.includes("体　积")||brief.includes("体　　积"))) {
         isBriefContainsInfo = true;
     }
+    // HDChina官种
+    if (brief.includes("source type") || brief.includes("video bitrate")) {
+        isBriefContainsInfo = true;
+    }
 
     var title = $('#top').text();
     var exclusive = 0;
@@ -182,7 +189,7 @@
     }
 
     // console.log("title_lowercase:"+title_lowercase);
-    var title_type, title_encode, title_audio, title_resolution, title_group, title_is_complete, title_is_episode;
+    var title_type, title_encode, title_audio, title_resolution, title_group, title_is_complete, title_is_episode, title_x265, title_x264;
 
     // 媒介
     if(title_lowercase.includes("web-dl") || title_lowercase.includes("webdl")){
@@ -226,9 +233,9 @@
         title_audio = 17;
     } else if (title_lowercase.includes("dts-hd ma") || title_lowercase.includes("dts-hdma")) {
         title_audio = 8;
-    } else if (title_lowercase.includes("dts:x") || title_lowercase.includes("dts-x") || title_lowercase.includes("dts: x")) {
+    } else if (title_lowercase.includes("dts:x")|| title_lowercase.includes("dts: x")) {
         title_audio = 18;
-    } else if (title_lowercase.includes("dts")) {
+    } else if (title_lowercase.includes("dts") && !title_lowercase.includes("dts-x") ) {
         title_audio = 3;
     }
 
@@ -245,10 +252,23 @@
         title_resolution = 6;
     }
 
+    if (title_lowercase.includes("complete")) {
+        title_is_complete = true;
+    }
+
     if (title_lowercase.match(/s\d+e\d+/i) || title_lowercase.match(/ep\d+/i)) {
+    // if (title_lowercase.match(/s\d+e\d+/i)) {
         title_is_episode = true;
         // console.log("===============================当前为分集");
     }
+
+    if (title_lowercase.includes("x265")) {
+        title_x265 = true;
+    }
+    if (title_lowercase.includes("x264")) {
+        title_x264 = true;
+    }
+
 
     var subtitle, cat, type, encode, audio, resolution, area, group, anonymous, is_complete,category;
     var poster;
@@ -263,9 +283,13 @@
     var isTagTextChinese = false;    //标签是否选择中字
     var isTagTextEnglish = false;    //标签是否选择英字
     var isTagResident = false;       //标签是否选择驻站
+    var isTagBigTorrent = false;     //标签是否选择大包
+    var isBiggerThan1T = false;      //种子体积是否大于1T
     var isAudioChinese = false;
     var isTextChinese = false;
     var isTextEnglish = false;
+    var mi_x265 = false;
+    var mi_x264 = false;
 
     var tdlist = $('#outer').find('td');
     for (var i = 0; i < tdlist.length; i ++) {
@@ -316,6 +340,13 @@
                 isTagTextEnglish = true;
                 // console.log("已选择官方标签");
             }
+            if(text.includes("大包")){
+                isTagBigTorrent = true;
+                // console.log("已选择大包标签");
+            }
+            if (text.indexOf('完结') >= 0) {
+                is_complete = true;
+            }
         }
 
 
@@ -324,6 +355,10 @@
             if(text.includes("制作组")){
                 isGroupSelected = true;
                 //console.log("已选择制作组");
+            }
+            if(text.includes("TB")){
+                isBiggerThan1T = true;
+                //console.log("种子体积大于1T");
             }
             // console.log(text)
             // 类型
@@ -361,9 +396,6 @@
                 cat = 418;
             } else if (text.indexOf('Playlet') >= 0) {
                 cat = 419;
-            }
-            if (text.indexOf('[合集]') >= 0) {
-                is_complete = true;
             }
             // console.log("cat:"+cat);
 
@@ -554,6 +586,12 @@
             if (textLanguage.includes("English")){
                 isTextEnglish = true;
             }
+            if (mediainfo.includes("x264")){
+                mi_x264 = true;
+            }
+            if (mediainfo.includes("x265")){
+                mi_x265 = true;
+            }
             // alert(isAudioChinese.toString() + isTextChinese.toString() + isTextEnglish.toString());
         }
     }
@@ -610,11 +648,14 @@
             $('#top').after('<div style="display: inline-block; padding: 10px 30px; color: white; background: #F44336; font-weight: bold; border-radius: 5px; margin: 0px"; display: block; position: fixed;bottom: 0;right: 0;box-shadow: 0 0 10px rgba(0,0,0,0.5); id="assistant-tooltips"></div><br><div style="display: inline-block; padding: 10px 30px; color: black; background: #ffdd59; font-weight: bold; border-radius: 5px; margin: 4px"; display: block; position: fixed;bottom: 0;right: 0;box-shadow: 0 0 10px rgba(0,0,0,0.5); id="assistant-tooltips-warning"></div><br>');
     }
 
+    $('#assistant-tooltips').append('【错误】: ');
+    $('#assistant-tooltips-warning').append('【警告】: ');
+
     /* if (/\s+/.test(title)) {
         $('#assistant-tooltips').append('主标题包含空格<br/>');
         error = true;
     } */
-    if(/[^\x00-\xff]+/g.test(title) && !title.includes('￡') && !title.includes('™')) {
+    if(/[^\x00-\xff]+/g.test(title) && !title.includes('￡') && !title.includes('™') && !/[\u2161-\u2169]/g.test(title) && !title.includes('Ⅰ')) {
         $('#assistant-tooltips').append('主标题包含中文或中文字符<br/>');
         error = true;
     }
@@ -670,6 +711,11 @@
 
     if ((resolution === 8 ||resolution === 4 || title_resolution === 4) && !(godDramaSeed || officialSeed)){
          $('#assistant-tooltips-warning').append("请检查是否有更高清的资源");
+         warning = true;
+    }
+
+    if (title_is_complete && !is_complete && (cat === 402 || cat === 403 || cat === 404)) {
+        $('#assistant-tooltips-warning').append("完结剧集请添加完结标签");
          warning = true;
     }
 
@@ -746,9 +792,17 @@
         error = true;
     }
     if(isTextEnglish && !isTagTextEnglish) {
-        $('#assistant-tooltips').append('未选择英字标签<br/>');
-        error = true;
+        $('#assistant-tooltips-warning').append('未选择英字标签<br/>');
+        warning = true;
     }
+    if(isBiggerThan1T && !isTagBigTorrent) {
+        $('#assistant-tooltips-warning').append('未选择大包标签<br/>');
+        warning = true;
+    }
+//     if(!isBiggerThan1T && isTagBigTorrent) {
+//         $('#assistant-tooltips').append('小于1T的资源无需添加大包标签<br/>');
+//         error = true;
+//     }
 
     /* if (pngCount < 3) {
         $('#assistant-tooltips').append('PNG格式的图片未满3张<br/>');
@@ -763,6 +817,15 @@
         error = true;
     }
 
+    if(mi_x264 && !title_x264 && officialSeed && category === 6){
+        $('#assistant-tooltips').append('主标题中编码应为 x264<br/>');
+        error = true;
+    }
+    if(mi_x265 && !title_x265 && officialSeed && category === 6){
+        $('#assistant-tooltips').append('主标题中编码应为 x265<br/>');
+        error = true;
+    }
+
     if (officialMusicSeed) {
         $('#assistant-tooltips').empty();
         error = false;
@@ -772,9 +835,11 @@
         }
     }
 
-    if (cat === 413 || cat === 418 || cat === 415 || cat === 412 || cat === 411) {
+    if (cat === 413 || cat === 418 || cat === 415 || cat === 412 || cat === 411 || cat === 408) {
         $('#assistant-tooltips').empty();
         error = false;
+        $('#assistant-tooltips-warning').empty();
+        warning = false;
     }
 
     if(cat === 411 && !title_lowercase.includes("khz")) {
@@ -801,8 +866,12 @@
                     // console.log(this.textContent);
                     if (isFoundReviewLink) {
                         $(this).before(' | <a href="javascript:;" id="approvelink" class="small"><b><font><svg t="1655224943277" class="icon" viewBox="0 0 1397 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="45530" width="16" height="16"><path d="M1396.363636 121.018182c0 0-223.418182 74.472727-484.072727 372.363636-242.036364 269.963636-297.890909 381.672727-390.981818 530.618182C512 1014.690909 372.363636 744.727273 0 549.236364l195.490909-186.181818c0 0 176.872727 121.018182 297.890909 344.436364 0 0 307.2-474.763636 902.981818-707.490909L1396.363636 121.018182 1396.363636 121.018182zM1396.363636 121.018182" p-id="45531" fill="#8BC34A"></path></svg><svg t="1655224943277" class="icon" viewBox="0 0 1397 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="45530" width="16" height="16"><path d="M1396.363636 121.018182c0 0-223.418182 74.472727-484.072727 372.363636-242.036364 269.963636-297.890909 381.672727-390.981818 530.618182C512 1014.690909 372.363636 744.727273 0 549.236364l195.490909-186.181818c0 0 176.872727 121.018182 297.890909 344.436364 0 0 307.2-474.763636 902.981818-707.490909L1396.363636 121.018182 1396.363636 121.018182zM1396.363636 121.018182" p-id="45531" fill="#8BC34A"></path></svg>&nbsp;一键通过</font></b></a>'); // Add new hyperlink and separator
+                        $('#addcuruser').after(' | <a href="javascript:;" id="approvelink_foot" class="small"><b><font><svg t="1655224943277" class="icon" viewBox="0 0 1397 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="45530" width="16" height="16"><path d="M1396.363636 121.018182c0 0-223.418182 74.472727-484.072727 372.363636-242.036364 269.963636-297.890909 381.672727-390.981818 530.618182C512 1014.690909 372.363636 744.727273 0 549.236364l195.490909-186.181818c0 0 176.872727 121.018182 297.890909 344.436364 0 0 307.2-474.763636 902.981818-707.490909L1396.363636 121.018182 1396.363636 121.018182zM1396.363636 121.018182" p-id="45531" fill="#8BC34A"></path></svg><svg t="1655224943277" class="icon" viewBox="0 0 1397 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="45530" width="16" height="16"><path d="M1396.363636 121.018182c0 0-223.418182 74.472727-484.072727 372.363636-242.036364 269.963636-297.890909 381.672727-390.981818 530.618182C512 1014.690909 372.363636 744.727273 0 549.236364l195.490909-186.181818c0 0 176.872727 121.018182 297.890909 344.436364 0 0 307.2-474.763636 902.981818-707.490909L1396.363636 121.018182 1396.363636 121.018182zM1396.363636 121.018182" p-id="45531" fill="#8BC34A"></path></svg>&nbsp;一键通过</font></b></a>'); // Add new hyperlink and separator
+
                         var actionLink = document.querySelector('#approvelink');
+                        var approvelink_foot = document.querySelector('#approvelink_foot');
                         actionLink.style.fontSize = fontsize;
+                        approvelink_foot.style.fontSize = fontsize;
                         actionLink.addEventListener('click', function(event) {
                             if (error) {
                                 // alert("当前种子仍有错误!");
@@ -833,6 +902,54 @@
                             event.preventDefault(); // 阻止超链接的默认行为
                             // 设置标记以供新页面使用
                             GM_setValue('autoCheckAndConfirm', true);
+                            if (autoclose) {
+                                GM_setValue('autoClose', true);
+                            }
+                            if (autoback) {
+                                GM_setValue('autoBack', true);
+                            }
+                            // 找到并点击指定按钮
+                            var specifiedButton = document.querySelector('#approval'); // 替换为实际的按钮选择器
+                            if (specifiedButton) {
+                                specifiedButton.click();
+                            }
+                        });
+                        approvelink_foot.addEventListener('click', function(event) {
+                            if (error) {
+                                // alert("当前种子仍有错误!");
+                                GM_setValue('autoFillErrorInfo', false);
+                                var popup = document.createElement('div');
+                                popup.id = "popup";
+                                popup.style.fontSize = "20pt";
+                                popup.style.position = "fixed";
+                                popup.style.top = "10%";
+                                popup.style.left = "10%";
+                                popup.style.transform = "translate(-50%, -50%)";
+                                popup.style.backgroundColor = "rgb(234, 32, 39)";
+                                popup.style.color = "white";
+                                popup.style.padding = "15px";
+                                popup.style.borderRadius = "10px";
+                                popup.style.display = "none";
+                                document.body.appendChild(popup);
+
+                                // 弹出悬浮框提示信息
+                                popup.innerText = "当前种子仍有错误!";
+                                popup.style.display = "block";
+
+                                // 1秒后隐藏悬浮框
+                                setTimeout(function() {
+                                    popup.style.display = "none";
+                                }, 1000);
+                            }
+                            event.preventDefault(); // 阻止超链接的默认行为
+                            // 设置标记以供新页面使用
+                            GM_setValue('autoCheckAndConfirm', true);
+                            if (autoclose) {
+                                GM_setValue('autoClose', true);
+                            }
+                            if (autoback) {
+                                GM_setValue('autoBack', true);
+                            }
                             // 找到并点击指定按钮
                             var specifiedButton = document.querySelector('#approval'); // 替换为实际的按钮选择器
                             if (specifiedButton) {
@@ -875,9 +992,18 @@
             if (!error && isFoundReviewLink){
                 // console.log("此种子未检测到错误");
                 document.querySelector('#approvelink').style.fontSize = biggerbuttonsize;
+                document.querySelector('#approvelink_foot').style.fontSize = biggerbuttonsize;
             } else if ((error && isFoundReviewLink)){
                 document.querySelector('#approval').style.fontSize = biggerbuttonsize;
             }
+        }
+        if (GM_getValue('autoClose', false)){
+            GM_setValue('autoClose', false);
+            window.close();
+        }
+        if (GM_getValue('autoBack', false)){
+            GM_setValue('autoBack', false);
+            window.history.back();
         }
     }
 
@@ -908,10 +1034,12 @@
                 }
                 var errorInfo = GM_getValue('errorInfo', "");
                 // console.log("errorInfo: "+errorInfo);
+                errorInfo = errorInfo.replace("【错误】: ", "");
                 errorInfo = errorInfo.replace("MediaInfo中含有bbcode", "请将MediaInfo中多余的标签删除，例如：[b][color=royalblue]******[/color][/b]");
                 errorInfo = errorInfo.replace("简介中包含Mediainfo", "请删去简介中的MediaInfo");
                 errorInfo = errorInfo.replace("媒体信息未解析", "请使用通过MediaInfo或者PotPlayer获取的正确的mediainfo信息，具体方法详见教程第四步https://www.agsvpt.com/forums.php?action=viewtopic&forumid=4&topicid=8");
                 errorInfo = errorInfo.replace("未检测到IMDb或豆瓣链接", "请补充imdb/豆瓣链接");
+                errorInfo = errorInfo.replace("副标题为空", "请补充副标题");
                 // console.log("errorInfo: "+errorInfo);
                 $("#approval-comment").text(errorInfo);
 
@@ -925,8 +1053,17 @@
     // 快捷键 ctrl+e 一键通过
     document.addEventListener('keydown', function(e) {
         if (e.key === 'F4') {
-            let button = document.querySelector('#approvelink');
-            button.click();
+            if(!error){
+                let button = document.querySelector('#approvelink');
+                button.click();
+            }
+            else {
+                let button = document.querySelector('#approval');
+                button.click();
+            }
+        }
+        if (e.key === 'F3') {
+            window.close();
         }
     });
 
@@ -946,11 +1083,16 @@
     if (error) {
         $('#assistant-tooltips').css('background', '#EA2027');
     } else {
+        $('#assistant-tooltips').empty();
         $('#assistant-tooltips').append('此种子未检测到错误');
         $('#assistant-tooltips').css('background', '#8BC34A');
     }
     if (!warning) {
         $('#assistant-tooltips-warning').hide();
+    }
+
+    if (!error && warning) {
+        $('#assistant-tooltips').hide();
     }
     // $('#assistant-tooltips-warning').hide();
     // console.log("warning:"+warning);
