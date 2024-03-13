@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      1.0.3
+// @version      1.1.5
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
@@ -10,6 +10,7 @@
 // @require      https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @grant        GM_registerMenuCommand
 // @grant        GM_xmlhttpRequest
 // @license      MIT
 // @downloadURL https://update.greasyfork.org/scripts/482900/Agsv-Torrent-Assistant.user.js
@@ -27,10 +28,63 @@
     var review_info_position = 2;  // 错误提示信息位置：1:页面最上方，2:主标题正下方，3:主标题正上方
     var fontsize = "9pt";          // 一键通过按钮的字体大小
     var timeout = 200;             // 弹出页内鼠标点击间隔，单位毫秒，设置越小点击越快，但是对网络要求更高
-    var biggerbutton = 1;          // 是否将按钮放大
     var biggerbuttonsize = "40pt"; // 放大的按钮大小
-    var autoclose = 1;             // 一键通过后自动关闭页面
     var autoback = 0;              // 一键通过后返回上一页面
+
+    let biggerbutton = GM_getValue("biggerbutton");
+    let autoclose = GM_getValue("autoclose");
+    let add_link_before_img = GM_getValue("add_link_before_img");
+
+    registerMenuCommand();
+    // 注册脚本菜单
+    function registerMenuCommand() {
+        GM_registerMenuCommand(`${ GM_getValue("biggerbutton", false) ? '✅':'❌'} 审核按钮放大`, function(){
+            biggerbutton = !biggerbutton;
+            GM_setValue("biggerbutton", biggerbutton);
+            location.reload();
+        });
+
+        GM_registerMenuCommand(`${ GM_getValue("autoclose", false) ? '✅':'❌'} 自动关闭页面`, function(){
+            autoclose = !autoclose;
+            GM_setValue("autoclose", autoclose);
+            location.reload();
+        });
+
+        GM_registerMenuCommand(`${ GM_getValue("add_link_before_img", false) ? '✅':'❌'} 添加图片链接`, function(){
+            add_link_before_img = !add_link_before_img;
+            GM_setValue("add_link_before_img", add_link_before_img);
+            location.reload();
+        });
+    }
+
+    const userAgent = navigator.userAgent;
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+    if (isMobile){
+        biggerbuttonsize = "120pt";
+        autoclose = 0;
+        autoback = 1;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     var cat_constant = {
         401: 'Movie(电影)',
@@ -138,7 +192,7 @@
         isBriefContainsInfo = true;
         // console.log("简介中包含Mediainfo");
     }
-    if (brief.includes("disc info") || brief.includes(".release.info") || brief.includes("general information")) {
+    if (brief.includes("disc info") || brief.includes("disc size") || brief.includes(".release.info") || brief.includes("general information")) {
         isBriefContainsInfo = true;
     }
     // 杜比官种
@@ -160,6 +214,12 @@
     if (brief.includes("source type") || brief.includes("video bitrate")) {
         isBriefContainsInfo = true;
     }
+
+    var isBriefContainsForbidReseed = false;  //是否包含禁止转载
+    if (brief.includes("禁止转载")) {
+        isBriefContainsForbidReseed = true;
+    }
+
 
     var title = $('#top').text();
     var exclusive = 0;
@@ -194,14 +254,14 @@
     // 媒介
     if(title_lowercase.includes("web-dl") || title_lowercase.includes("webdl")){
         title_type = 10;
-    } else if (title_lowercase.includes("hdtv")) {
-        title_type = 5;
     } else if (title_lowercase.includes("remux")) {
         title_type = 3;
-    } else if ((title_lowercase.includes("blu-ray") || title_lowercase.includes("bluray") || title_lowercase.includes("uhd blu-ray") || title_lowercase.includes("uhd bluray")) && (title_lowercase.includes("x265") || title_lowercase.includes("x264"))) {
+    } else if ((title_lowercase.includes("blu-ray") || title_lowercase.includes("bluray") || title_lowercase.includes("uhd blu-ray") || title_lowercase.includes("uhd bluray") || title_lowercase.includes("hdtv")) && (title_lowercase.includes("x265") || title_lowercase.includes("x264"))) {
         title_type = 7;
     } else if (title_lowercase.includes("webrip") || title_lowercase.includes("dvdrip") || title_lowercase.includes("bdrip")) {
         title_type = 7;
+    } else if (title_lowercase.includes("hdtv")) {
+        title_type = 5;
     }
 
     // 视频编码
@@ -223,7 +283,7 @@
         title_audio = 1;
     } else if (title_lowercase.includes("lpcm")) {
         title_audio = 10;
-    } else if (title_lowercase.includes("ddp") || title_lowercase.includes("dd+")) {
+    } else if (title_lowercase.includes("ddp") || title_lowercase.includes("dd+") || title_lowercase.includes("eac3")) {
         title_audio = 19;
     } else if (title_lowercase.includes("aac")) {
         title_audio = 6;
@@ -231,7 +291,7 @@
         title_audio = 11;
     } else if (title_lowercase.includes("truehd") && title_lowercase.includes("atmos")) {
         title_audio = 17;
-    } else if (title_lowercase.includes("dts-hd ma") || title_lowercase.includes("dts-hdma")) {
+    } else if (title_lowercase.includes("dts-hd ma") || title_lowercase.includes("dts-hdma") || title_lowercase.includes("dts-hd")) {
         title_audio = 8;
     } else if (title_lowercase.includes("dts:x")|| title_lowercase.includes("dts: x")) {
         title_audio = 18;
@@ -710,17 +770,17 @@
     }
 
     if ((resolution === 8 ||resolution === 4 || title_resolution === 4) && !(godDramaSeed || officialSeed)){
-         $('#assistant-tooltips-warning').append("请检查是否有更高清的资源");
+         $('#assistant-tooltips-warning').append("请检查是否有更高清的资源<br/>");
          warning = true;
     }
 
     if (title_is_complete && !is_complete && (cat === 402 || cat === 403 || cat === 404)) {
-        $('#assistant-tooltips-warning').append("完结剧集请添加完结标签");
+        $('#assistant-tooltips-warning').append("完结剧集请添加完结标签<br/>");
          warning = true;
     }
 
     if (!dbUrl && !godDramaSeed) {
-        $('#assistant-tooltips').append('未检测到IMDb或豆瓣链接<br/>');
+        $('#assistant-tooltips').append('简介中未检测到IMDb或豆瓣链接<br/>');
         error = true;
     }
 
@@ -743,7 +803,7 @@
         error = true;
     }
 
-    if (godDramaSeed && !isReseedProhibited) {
+    if (godDramaSeed && !isReseedProhibited && isBriefContainsForbidReseed) {
         $('#assistant-tooltips').append('未选择禁转标签<br/>');
         error = true;
     }
@@ -788,8 +848,8 @@
 //         error = true;
 //     }
     if(isTextChinese && !isTagTextChinese) {
-        $('#assistant-tooltips').append('未选择中字标签<br/>');
-        error = true;
+        $('#assistant-tooltips-warning').append('未选择中字标签<br/>');
+        warning = true;
     }
     if(isTextEnglish && !isTagTextEnglish) {
         $('#assistant-tooltips-warning').append('未选择英字标签<br/>');
@@ -1038,7 +1098,7 @@
                 errorInfo = errorInfo.replace("MediaInfo中含有bbcode", "请将MediaInfo中多余的标签删除，例如：[b][color=royalblue]******[/color][/b]");
                 errorInfo = errorInfo.replace("简介中包含Mediainfo", "请删去简介中的MediaInfo");
                 errorInfo = errorInfo.replace("媒体信息未解析", "请使用通过MediaInfo或者PotPlayer获取的正确的mediainfo信息，具体方法详见教程第四步https://www.agsvpt.com/forums.php?action=viewtopic&forumid=4&topicid=8");
-                errorInfo = errorInfo.replace("未检测到IMDb或豆瓣链接", "请补充imdb/豆瓣链接");
+                errorInfo = errorInfo.replace("简介中未检测到IMDb或豆瓣链接", "请补充imdb/豆瓣链接");
                 errorInfo = errorInfo.replace("副标题为空", "请补充副标题");
                 // console.log("errorInfo: "+errorInfo);
                 $("#approval-comment").text(errorInfo);
@@ -1074,6 +1134,38 @@
     } else if (!error) {
         GM_setValue('autoFillErrorInfo', false);
         // GM_setValue('errorInfo', "");
+    }
+
+    if (add_link_before_img && isFoundReviewLink) {
+        // 查找ID为kdescr的元素内的所有<img>元素
+        var images = document.querySelectorAll('#kdescr img');
+
+        // 遍历这些图片
+        images.forEach(function(img) {
+            // 获取每个图片的源链接（src属性）
+            var src = img.getAttribute('src');
+
+            // 创建一个新的<a>元素
+            var link = document.createElement('a');
+            // 设置<a>元素的href属性为图片的链接
+            link.setAttribute('href', src);
+            // 设置<a>标签的目标为新标签页打开
+            link.setAttribute('target', '_blank');
+            // 插入文字或说明到<a>标签中，如果需要
+            link.textContent = '打开图片链接 ( 种审用 )';
+
+            // 创建一个新的<br>元素用于分行
+            var breakLine1 = document.createElement('br');
+            // 将<br>元素插入到<a>元素后面
+            img.parentNode.insertBefore(breakLine1, img);
+            // 将<a>元素插入到图片元素前面
+            img.parentNode.insertBefore(link, img);
+            // link.style.color = '#EA2027';
+            // 创建一个新的<br>元素用于分行
+            var breakLine2 = document.createElement('br');
+            // 将<br>元素插入到<a>元素后面
+            img.parentNode.insertBefore(breakLine2, img);
+        });
     }
 
     //console.log("============================error:"+error+"isFoundReviewLink:"+isFoundReviewLink);
