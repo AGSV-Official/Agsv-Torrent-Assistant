@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      1.1.5
+// @version      1.2.1
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
@@ -50,7 +50,7 @@
             location.reload();
         });
 
-        GM_registerMenuCommand(`${ GM_getValue("add_link_before_img", false) ? '✅':'❌'} 添加图片链接`, function(){
+        GM_registerMenuCommand(`${ GM_getValue("add_link_before_img", false) ? '✅':'❌'} 打开图片链接`, function(){
             add_link_before_img = !add_link_before_img;
             GM_setValue("add_link_before_img", add_link_before_img);
             location.reload();
@@ -64,27 +64,6 @@
         autoclose = 0;
         autoback = 1;
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     var cat_constant = {
         401: 'Movie(电影)',
@@ -168,10 +147,12 @@
 
     }
 
-    const brief = $("#kdescr").text().toLowerCase();           // 获取元素的文本内容
+    const brief = $("#kdescr").text().toLowerCase();           // 获取简介
     const containsIMDbLink = brief.includes("imdb.com");       // 检查内容是否包含 imdb.com 链接
     const containsDoubanLink = brief.includes("douban.com");   // 检查内容是否包含 douban.com 链接
     const containsTMDBLink = brief.includes("themoviedb.org"); // 检查内容是否包含 themoviedb.org 链接
+
+    // console.log(brief);
 
     var dbUrl; // 是否包含影片链接
     if (containsIMDbLink || containsDoubanLink || containsTMDBLink) {
@@ -220,8 +201,7 @@
         isBriefContainsForbidReseed = true;
     }
 
-
-    var title = $('#top').text();
+    var title = $('#top').text();  // 主标题
     var exclusive = 0;
     if (title.indexOf('禁转') >= 0) {
         exclusive = 1;
@@ -258,7 +238,7 @@
         title_type = 3;
     } else if ((title_lowercase.includes("blu-ray") || title_lowercase.includes("bluray") || title_lowercase.includes("uhd blu-ray") || title_lowercase.includes("uhd bluray") || title_lowercase.includes("hdtv")) && (title_lowercase.includes("x265") || title_lowercase.includes("x264"))) {
         title_type = 7;
-    } else if (title_lowercase.includes("webrip") || title_lowercase.includes("dvdrip") || title_lowercase.includes("bdrip")) {
+    } else if (title_lowercase.includes("webrip") || title_lowercase.includes("web-rip") || title_lowercase.includes("dvdrip") || title_lowercase.includes("bdrip")) {
         title_type = 7;
     } else if (title_lowercase.includes("hdtv")) {
         title_type = 5;
@@ -350,12 +330,16 @@
     var isTextEnglish = false;
     var mi_x265 = false;
     var mi_x264 = false;
+    var isSubtitleAnime = false;     //副标题是是否包含动画
 
     var tdlist = $('#outer').find('td');
     for (var i = 0; i < tdlist.length; i ++) {
         var td = $(tdlist[i]);
         if (td.text() == '副标题' || td.text() == '副標題') {
             subtitle = td.parent().children().last().text();
+            if (subtitle.includes("动画")) {
+                isSubtitleAnime = true;
+            }
         }
 
         if (td.text() == '添加') {
@@ -584,10 +568,6 @@
             // console.log("category:"+category)
         }
 
-        if (td.text() == '副标题' || td.text() == '副標題') {
-            subtitle = td.parent().children().last().text();
-        }
-
         if (td.text() == '行为') {
             fixtd = td.parent().children().last();
         }
@@ -676,6 +656,7 @@
     var screenshot = '';
     var pngCount = 0;
     var imgCount = 0;
+    var isBriefContainsInfoImg = false;  //是否包含冗余的影片参数图片
     $('#kdescr img').each(function(index, element) {
         var src = $(element).attr('src');
         if(src != undefined) {
@@ -683,6 +664,9 @@
                 screenshot += '\n';
             }
             screenshot += src.trim();
+            if (src.includes("img.pterclub.com/images/2024/01/10/49401952f8353abd4246023bff8de2cc.png") || src.includes("Mediainfo.png")) {
+                isBriefContainsInfoImg = true;
+            }
         }
         if (src.indexOf('.png') >= 0) {
             pngCount++;
@@ -715,12 +699,17 @@
         $('#assistant-tooltips').append('主标题包含空格<br/>');
         error = true;
     } */
-    if(/[^\x00-\xff]+/g.test(title) && !title.includes('￡') && !title.includes('™') && !/[\u2161-\u2169]/g.test(title) && !title.includes('Ⅰ')) {
+    if(/[^\x00-\xff]+/g.test(title) && !title.includes('￡') && !title.includes('™') && !/[\u2161-\u2169]/g.test(title) && !title.includes('Ⅰ') && !title.includes('白自在')) {
         $('#assistant-tooltips').append('主标题包含中文或中文字符<br/>');
         error = true;
     }
     if (!subtitle) {
         $('#assistant-tooltips').append('副标题为空<br/>');
+        error = true;
+    }
+
+    if (isSubtitleAnime && cat !== 405) {
+        $('#assistant-tooltips').append('类型未选择Anime(动漫)<br/>');
         error = true;
     }
     if (!cat) {
@@ -779,7 +768,7 @@
          warning = true;
     }
 
-    if (!dbUrl && !godDramaSeed) {
+    if (!dbUrl && cat !==419) {
         $('#assistant-tooltips').append('简介中未检测到IMDb或豆瓣链接<br/>');
         error = true;
     }
@@ -816,6 +805,11 @@
     if (godDramaSeed && !isTagResident) {
         $('#assistant-tooltips').append('未选择驻站标签<br/>');
         error = true;
+    }
+
+    if (isBriefContainsInfoImg) {
+        $('#assistant-tooltips-warning').append('请删除多余的影片参数/媒体信息图片<br/>');
+        warning = true;
     }
 
     if (!officialSeed && isOfficialSeedLabel) {
@@ -1166,6 +1160,27 @@
             // 将<br>元素插入到<a>元素后面
             img.parentNode.insertBefore(breakLine2, img);
         });
+
+
+//         $('img').click(function(event) {
+//             // 阻止默认的点击行为
+//             event.preventDefault();
+//             // 获取图片链接
+//             var imageSrc = $(this).attr('src');
+//             // 打开图片链接
+//             window.open(imageSrc, '_blank');
+//         });
+//         // 为所有 <img> 元素添加鼠标移入事件监听器
+//         $('img').mouseenter(function() {
+//             // 将鼠标样式设置为手型
+//             $(this).css('cursor', 'pointer');
+//         });
+
+//         // 为所有 <img> 元素添加鼠标移出事件监听器
+//         $('img').mouseleave(function() {
+//             // 将鼠标样式恢复默认
+//             $(this).css('cursor', 'auto');
+//         });
     }
 
     //console.log("============================error:"+error+"isFoundReviewLink:"+isFoundReviewLink);
