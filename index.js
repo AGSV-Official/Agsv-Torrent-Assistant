@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Agsv-Torrent-Assistant
 // @namespace    http://tampermonkey.net/
-// @version      1.2.1
+// @version      1.2.7
 // @description  Agsv审种助手
 // @author       Exception & 7ommy
 // @match        *://*.agsvpt.com/details.php*
@@ -236,12 +236,16 @@
         title_type = 10;
     } else if (title_lowercase.includes("remux")) {
         title_type = 3;
-    } else if ((title_lowercase.includes("blu-ray") || title_lowercase.includes("bluray") || title_lowercase.includes("uhd blu-ray") || title_lowercase.includes("uhd bluray") || title_lowercase.includes("hdtv")) && (title_lowercase.includes("x265") || title_lowercase.includes("x264"))) {
+    } else if (((title_lowercase.includes("blu-ray") || title_lowercase.includes("bluray")) && !(title.includes(" HEVC") || title.includes(" AVC") || title.includes(" VC-1") || title.match(/\bMPEG-?[24]/)))) {
         title_type = 7;
     } else if (title_lowercase.includes("webrip") || title_lowercase.includes("web-rip") || title_lowercase.includes("dvdrip") || title_lowercase.includes("bdrip")) {
         title_type = 7;
     } else if (title_lowercase.includes("hdtv")) {
         title_type = 5;
+    } else if (title_lowercase.includes("uhd blu-ray") || title_lowercase.includes("uhd bluray")) {
+        title_type = 11;
+    } else if (title_lowercase.includes("blu-ray") || title_lowercase.includes("bluray")) {
+        title_type = 1;
     }
 
     // 视频编码
@@ -263,11 +267,11 @@
         title_audio = 1;
     } else if (title_lowercase.includes("lpcm")) {
         title_audio = 10;
-    } else if (title_lowercase.includes("ddp") || title_lowercase.includes("dd+") || title_lowercase.includes("eac3")) {
+    } else if (title_lowercase.includes(" ddp") || title_lowercase.includes(" dd+") || title.search(/E-?AC-?3/) != -1) {
         title_audio = 19;
     } else if (title_lowercase.includes("aac")) {
         title_audio = 6;
-    } else if (title_lowercase.includes("ac3")) {
+    } else if (title_lowercase.includes(" ac3") || title_lowercase.includes(" dd")) {
         title_audio = 11;
     } else if (title_lowercase.includes("truehd") && title_lowercase.includes("atmos")) {
         title_audio = 17;
@@ -296,7 +300,8 @@
         title_is_complete = true;
     }
 
-    if (title_lowercase.match(/s\d+e\d+/i) || title_lowercase.match(/ep\d+/i)) {
+    // if (title_lowercase.match(/s\d+e\d+/i) || title_lowercase.match(/ep\d+/i)) {
+    if (title_lowercase.match(/s\d+e\d+/i)) {
     // if (title_lowercase.match(/s\d+e\d+/i)) {
         title_is_episode = true;
         // console.log("===============================当前为分集");
@@ -309,6 +314,35 @@
         title_x264 = true;
     }
 
+
+
+
+    // 检测标题是否包含不被信任的制作组
+    const keywords = [
+        "fgt", "hao4k", "mp4ba", "rarbg", "gpthd",
+        "seeweb", "dreamhd", "blacktv", "xiaomi",
+        "huawei", "momohd", "ddhdtv", "nukehd",
+        "tagweb", "sonyhd", "minihd", "bitstv",
+        "-alt", "rarbg", "mp4ba", "fgt", "hao4k",
+        "batweb", "dbd-raws","xunlei",
+        "zerotv","lelvetv"
+    ];
+
+    function containsKeyword(text) {
+        const lowerCaseText = text.toLowerCase();
+        for (let keyword of keywords) {
+            if (lowerCaseText.includes(keyword)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    var is_untrusted_group = false;
+    if(containsKeyword(title_lowercase)) {
+        is_untrusted_group = true;
+    }
 
     var subtitle, cat, type, encode, audio, resolution, area, group, anonymous, is_complete,category;
     var poster;
@@ -609,7 +643,7 @@
             const audioMatch = mediainfo.match(/Audio.*?Language:(\w+)/);
             const audioLanguage = audioMatch ? audioMatch[1] : 'Not found';
             // console.log(`The language of the audio is: ${audioLanguage}`);
-            if (audioLanguage.includes("Chinese") || audioLanguage.includes("Mandarin")){
+            if (!audioLanguage.includes("Text") && (audioLanguage.includes("Chinese") || audioLanguage.includes("Mandarin"))){
                 isAudioChinese = true;
             }
 
@@ -789,6 +823,11 @@
 
     if (officialSeed && !isGroupSelected) {
         $('#assistant-tooltips').append('未选择制作组<br/>');
+        error = true;
+    }
+
+    if(is_untrusted_group) {
+        $('#assistant-tooltips').append('检测为疑似未信任制作组发布的资源<br/>');
         error = true;
     }
 
@@ -1091,7 +1130,7 @@
                 errorInfo = errorInfo.replace("【错误】: ", "");
                 errorInfo = errorInfo.replace("MediaInfo中含有bbcode", "请将MediaInfo中多余的标签删除，例如：[b][color=royalblue]******[/color][/b]");
                 errorInfo = errorInfo.replace("简介中包含Mediainfo", "请删去简介中的MediaInfo");
-                errorInfo = errorInfo.replace("媒体信息未解析", "请使用通过MediaInfo或者PotPlayer获取的正确的mediainfo信息，具体方法详见教程第四步https://www.agsvpt.com/forums.php?action=viewtopic&forumid=4&topicid=8");
+                errorInfo = errorInfo.replace("媒体信息未解析", '<span>请使用通过MediaInfo或者PotPlayer获取的正确的mediainfo信息，具体方法详见<a href="https://www.agsvpt.com/forums.php?action=viewtopic&forumid=4&topicid=8" style="color:#E57373;font-size:10pt" target="_blank"> 发种教程 </a></span><br>');
                 errorInfo = errorInfo.replace("简介中未检测到IMDb或豆瓣链接", "请补充imdb/豆瓣链接");
                 errorInfo = errorInfo.replace("副标题为空", "请补充副标题");
                 // console.log("errorInfo: "+errorInfo);
